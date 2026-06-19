@@ -1,16 +1,38 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import Image from "next/image"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Trash2, Edit2, Save, Upload, Loader2, Image as ImageIcon, Check } from "lucide-react"
+import { Trash2, Edit2, Upload, Loader2, Image as ImageIcon, Check } from "lucide-react"
+
+const starterGalleryRows = [
+  {
+    id: "starter-gallery-1",
+    image_url: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1000",
+    caption: "Adhithya NEET Academy Erode Campus",
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "starter-gallery-2",
+    image_url: "https://images.unsplash.com/photo-1577412647305-991150c7d163?q=80&w=1000",
+    caption: "Advanced Biology and Chemistry Lecture Hall",
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "starter-gallery-3",
+    image_url: "https://images.unsplash.com/photo-1542626991-cbc4e32524cc?q=80&w=1000",
+    caption: "Annual Academic Merit Felicitation Ceremony",
+    created_at: new Date().toISOString(),
+  },
+]
 
 export default function GalleryManagementPage() {
-  const supabase = createClient()
-  const [gallery, setGallery] = useState<any[]>([])
+  const supabase = useMemo(() => createClient(), [])
+  const [gallery, setGallery] = useState<any[]>(starterGalleryRows)
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
 
@@ -22,7 +44,7 @@ export default function GalleryManagementPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editCaption, setEditCaption] = useState("")
 
-  const fetchGallery = async () => {
+  const fetchGallery = useCallback(async () => {
     setFetching(true)
     try {
       const { data, error } = await supabase
@@ -30,23 +52,27 @@ export default function GalleryManagementPage() {
         .select("*")
         .order("created_at", { ascending: false })
 
-      if (!error && data) setGallery(data)
+      if (!error && data && data.length > 0) {
+        setGallery(data)
+      } else {
+        setGallery(starterGalleryRows)
+      }
     } catch (err) {
       console.error(err)
     } finally {
       setFetching(false)
     }
-  }
+  }, [supabase])
 
   useEffect(() => {
     fetchGallery()
-  }, [])
+  }, [fetchGallery])
 
   const uploadFile = async (file: File): Promise<string> => {
     const fileExt = file.name.split(".").pop()
     const fileName = `gallery/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`
     
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from("academy")
       .upload(fileName, file, {
         cacheControl: "3600",
@@ -197,7 +223,7 @@ export default function GalleryManagementPage() {
               {gallery.map((item) => (
                 <div key={item.id} className="group border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 hover:shadow-lg transition-all duration-300 flex flex-col justify-between">
                   <div className="h-44 w-full bg-slate-100 relative overflow-hidden border-b border-slate-150">
-                    <img src={item.image_url} alt={item.caption || "Gallery Asset"} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <Image src={item.image_url} alt={item.caption || "Gallery Asset"} fill sizes="(max-width: 640px) 100vw, (max-width: 1280px) 33vw, 25vw" className="object-cover group-hover:scale-105 transition-transform duration-500" />
                   </div>
                   <div className="p-4 flex-1 flex flex-col justify-between gap-4">
                     {editingId === item.id ? (

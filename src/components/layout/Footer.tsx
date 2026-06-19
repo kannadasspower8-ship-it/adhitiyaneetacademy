@@ -1,5 +1,5 @@
 import { Logo } from "@/components/shared/Logo";
-import { MapPin, Phone, Mail } from "lucide-react";
+import { MapPin, Phone } from "lucide-react";
 import { cmsContent } from "@/data/cmsContent";
 import Link from "next/link";
 

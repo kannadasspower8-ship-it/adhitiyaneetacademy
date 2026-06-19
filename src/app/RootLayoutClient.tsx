@@ -4,7 +4,6 @@ import React from "react"
 import { usePathname } from "next/navigation"
 import { Header } from "@/components/layout/Header"
 import { Footer } from "@/components/layout/Footer"
-import { MessageCircle } from "lucide-react"
 
 export default function RootLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()

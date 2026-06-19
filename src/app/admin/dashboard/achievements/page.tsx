@@ -1,16 +1,27 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import Image from "next/image"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Edit2, Trash2, Upload, Loader2, Trophy } from "lucide-react"
+import { Plus, Edit2, Trash2, Loader2, Trophy } from "lucide-react"
+import { topRanks } from "@/data/mockData"
+
+const starterAchievementRows = topRanks.map((achievement, index) => ({
+  id: `starter-achievement-${index + 1}`,
+  name: achievement.name,
+  rank: achievement.rank,
+  score: achievement.score,
+  year: achievement.year,
+  image_url: achievement.image,
+}))
 
 export default function AchievementsManagementPage() {
-  const supabase = createClient()
-  const [achievements, setAchievements] = useState<any[]>([])
+  const supabase = useMemo(() => createClient(), [])
+  const [achievements, setAchievements] = useState<any[]>(starterAchievementRows)
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
 
@@ -27,7 +38,7 @@ export default function AchievementsManagementPage() {
     file: null as File | null,
   })
 
-  const fetchAchievements = async () => {
+  const fetchAchievements = useCallback(async () => {
     setFetching(true)
     try {
       const { data, error } = await supabase
@@ -35,21 +46,25 @@ export default function AchievementsManagementPage() {
         .select("*")
         .order("created_at", { ascending: false })
 
-      if (!error && data) setAchievements(data)
+      if (!error && data && data.length > 0) {
+        setAchievements(data)
+      } else {
+        setAchievements(starterAchievementRows)
+      }
     } catch (err) {
       console.error(err)
     } finally {
       setFetching(false)
     }
-  }
+  }, [supabase])
 
   useEffect(() => {
     fetchAchievements()
-  }, [])
+  }, [fetchAchievements])
 
   const uploadFile = async (file: File, folder: string): Promise<string> => {
     const fileName = `${folder}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`
-    const { data, error } = await supabase.storage.from("academy").upload(fileName, file, {
+    const { error } = await supabase.storage.from("academy").upload(fileName, file, {
       cacheControl: "3600",
       upsert: true,
     })
@@ -179,7 +194,7 @@ export default function AchievementsManagementPage() {
                 <div>
                   <div className="h-48 w-full bg-slate-100 relative overflow-hidden border-b border-slate-150">
                     {a.image_url ? (
-                      <img src={a.image_url} alt={a.name} className="w-full h-full object-cover" />
+                      <Image src={a.image_url} alt={a.name} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-355 bg-slate-50">
                         <Trophy className="w-12 h-12 text-slate-300" />
@@ -276,7 +291,7 @@ export default function AchievementsManagementPage() {
                   {achievementForm.imageUrl && !achievementForm.file && (
                     <div className="flex items-center gap-2 mt-2">
                       <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200">
-                        <img src={achievementForm.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                        <Image src={achievementForm.imageUrl} alt="Preview" width={40} height={40} className="w-full h-full object-cover" />
                       </div>
                       <span className="text-[11px] text-emerald-650 font-bold">✓ Current photo loaded</span>
                     </div>

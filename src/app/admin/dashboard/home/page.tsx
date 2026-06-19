@@ -1,49 +1,47 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import Image from "next/image"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Save, Eye, Upload, Loader2, Plus, Trash2, FileText, Check } from "lucide-react"
+import { Save, Eye, Loader2, Plus, Trash2, FileText } from "lucide-react"
+import { cmsContent } from "@/data/cmsContent"
+import { academyStats, features, topRanks } from "@/data/mockData"
+
+const starterStats = academyStats.map(({ label, value }) => ({ label, value }))
+const starterWhyItems = features.map(({ icon, title, description }) => ({ icon, title, description }))
+const starterHighlights = topRanks.map(({ name, score, rank, year }) => ({ name, score, rank, year }))
 
 export default function HomepageCMSPage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
 
   // Homepage CMS state
-  const [heroTitle, setHeroTitle] = useState("")
-  const [heroDescription, setHeroDescription] = useState("")
-  const [heroImageUrl, setHeroImageUrl] = useState("")
-  const [ctaText, setCtaText] = useState("")
+  const [heroTitle, setHeroTitle] = useState(cmsContent.home.hero.titleHighlight)
+  const [heroDescription, setHeroDescription] = useState(cmsContent.home.hero.description)
+  const [heroImageUrl, setHeroImageUrl] = useState(cmsContent.home.hero.image)
+  const [ctaText, setCtaText] = useState("Apply Now")
   const [file, setFile] = useState<File | null>(null)
 
   // Statistics State (always 4 key stats)
-  const [stats, setStats] = useState<any[]>([
-    { label: "", value: "" },
-    { label: "", value: "" },
-    { label: "", value: "" },
-    { label: "", value: "" }
-  ])
+  const [stats, setStats] = useState<any[]>(starterStats)
 
   // Why Choose Us State
-  const [whyTitle, setWhyTitle] = useState("")
-  const [whyDesc, setWhyDesc] = useState("")
-  const [whyItems, setWhyItems] = useState<any[]>([
-    { icon: "BookOpen", title: "", description: "" },
-    { icon: "Brain", title: "", description: "" },
-    { icon: "Trophy", title: "", description: "" }
-  ])
+  const [whyTitle, setWhyTitle] = useState(cmsContent.home.whyChooseUs.title)
+  const [whyDesc, setWhyDesc] = useState(cmsContent.home.whyChooseUs.description)
+  const [whyItems, setWhyItems] = useState<any[]>(starterWhyItems)
 
   // Success Highlights Topper highlights
-  const [highlights, setHighlights] = useState<any[]>([])
+  const [highlights, setHighlights] = useState<any[]>(starterHighlights)
 
   // Preview State modal
   const [previewOpen, setPreviewOpen] = useState(false)
 
-  const fetchHomepageData = async () => {
+  const fetchHomepageData = useCallback(async () => {
     setFetching(true)
     try {
       const { data, error } = await supabase
@@ -74,15 +72,15 @@ export default function HomepageCMSPage() {
     } finally {
       setFetching(false)
     }
-  }
+  }, [supabase])
 
   useEffect(() => {
     fetchHomepageData()
-  }, [])
+  }, [fetchHomepageData])
 
   const uploadFile = async (file: File): Promise<string> => {
     const fileName = `home/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`
-    const { data, error } = await supabase.storage.from("academy").upload(fileName, file, {
+    const { error } = await supabase.storage.from("academy").upload(fileName, file, {
       cacheControl: "3600",
       upsert: true,
     })
@@ -197,9 +195,9 @@ export default function HomepageCMSPage() {
                 </div>
                 <div className="w-full md:w-80 h-52 rounded-xl overflow-hidden border border-slate-700 bg-slate-800 shrink-0">
                   {file ? (
-                    <img src={URL.createObjectURL(file)} alt="Preview" className="w-full h-full object-cover" />
+                    <Image src={URL.createObjectURL(file)} alt="Preview" fill unoptimized className="object-cover" />
                   ) : heroImageUrl ? (
-                    <img src={heroImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                    <Image src={heroImageUrl} alt="Preview" fill sizes="320px" className="object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-550">No Image</div>
                   )}

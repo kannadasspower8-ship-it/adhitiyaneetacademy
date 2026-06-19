@@ -1,12 +1,13 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PhoneCall, Save, Loader2, Phone, Mail, MapPin, MessageCircle, Globe } from "lucide-react"
+import { cmsContent } from "@/data/cmsContent"
 
 const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -17,21 +18,21 @@ const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
 )
 
 export default function ContactInformationCMSPage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
 
   // Form State
-  const [phone, setPhone] = useState("")
-  const [email, setEmail] = useState("")
-  const [whatsapp, setWhatsapp] = useState("")
-  const [address, setAddress] = useState("")
-  const [mapEmbed, setMapEmbed] = useState("")
+  const [phone, setPhone] = useState(cmsContent.global.phonePrimary)
+  const [email, setEmail] = useState(cmsContent.global.emailPrimary)
+  const [whatsapp, setWhatsapp] = useState(cmsContent.global.whatsappNumber)
+  const [address, setAddress] = useState(cmsContent.global.address)
+  const [mapEmbed, setMapEmbed] = useState(cmsContent.global.mapEmbed)
   
   // Social Links State
-  const [instagram, setInstagram] = useState("")
+  const [instagram, setInstagram] = useState(cmsContent.global.socialLinks.instagram)
 
-  const fetchContact = async () => {
+  const fetchContact = useCallback(async () => {
     setFetching(true)
     try {
       const { data, error } = await supabase
@@ -53,11 +54,11 @@ export default function ContactInformationCMSPage() {
     } finally {
       setFetching(false)
     }
-  }
+  }, [supabase])
 
   useEffect(() => {
     fetchContact()
-  }, [])
+  }, [fetchContact])
 
   const handleSaveContact = async (e: React.FormEvent) => {
     e.preventDefault()

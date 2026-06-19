@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
@@ -13,7 +13,6 @@ import {
   Image as ImageIcon,
   Trophy,
   PhoneCall,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -39,7 +38,7 @@ const sidebarItems: SidebarItem[] = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [mobileOpen, setMobileOpen] = useState(false)
   const [adminName, setAdminName] = useState("Academy Admin")
 
@@ -51,7 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
     }
     fetchUser()
-  }, [])
+  }, [supabase.auth])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()

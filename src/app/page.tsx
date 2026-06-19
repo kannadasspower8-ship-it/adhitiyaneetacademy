@@ -7,7 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { FadeIn } from "@/components/shared/FadeIn";
 import { getGlobalSettings, getSectionContent, getDynamicCourses, getDynamicAchievements } from "@/lib/cms-loader";
 import { createClient } from "@/lib/supabase/server";
-import { academyStats, features, testimonials } from "@/data/mockData";
+import { features, testimonials } from "@/data/mockData";
 import { cmsContent } from "@/data/cmsContent";
 
 const TestimonialsSlider = dynamicImport(

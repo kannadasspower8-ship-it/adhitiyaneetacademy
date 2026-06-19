@@ -1,27 +1,29 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import Image from "next/image"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Save, Upload, Loader2, Landmark } from "lucide-react"
+import { Save, Loader2, Landmark } from "lucide-react"
+import { cmsContent } from "@/data/cmsContent"
 
 export default function AboutPageCMSPage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
 
   // About CMS state
-  const [aboutContent, setAboutContent] = useState("")
-  const [mission, setMission] = useState("")
-  const [vision, setVision] = useState("")
-  const [overview, setOverview] = useState("")
-  const [images, setImages] = useState<string[]>([])
+  const [aboutContent, setAboutContent] = useState(cmsContent.about.story.content1)
+  const [mission, setMission] = useState(cmsContent.about.mission.content)
+  const [vision, setVision] = useState(cmsContent.about.vision.content)
+  const [overview, setOverview] = useState(cmsContent.about.story.content2)
+  const [images, setImages] = useState<string[]>([cmsContent.about.story.image])
   const [file, setFile] = useState<File | null>(null)
 
-  const fetchAboutData = async () => {
+  const fetchAboutData = useCallback(async () => {
     setFetching(true)
     try {
       const { data, error } = await supabase
@@ -44,15 +46,15 @@ export default function AboutPageCMSPage() {
     } finally {
       setFetching(false)
     }
-  }
+  }, [supabase])
 
   useEffect(() => {
     fetchAboutData()
-  }, [])
+  }, [fetchAboutData])
 
   const uploadFile = async (file: File): Promise<string> => {
     const fileName = `about/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`
-    const { data, error } = await supabase.storage.from("academy").upload(fileName, file, {
+    const { error } = await supabase.storage.from("academy").upload(fileName, file, {
       cacheControl: "3600",
       upsert: true,
     })
@@ -164,7 +166,7 @@ export default function AboutPageCMSPage() {
               {images.length > 0 && !file && (
                 <div className="flex items-center gap-2 mt-2">
                   <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200">
-                    <img src={images[0]} alt="Campus" className="w-full h-full object-cover" />
+                    <Image src={images[0]} alt="Campus" width={48} height={48} className="w-full h-full object-cover" />
                   </div>
                   <span className="text-[11px] text-emerald-600 font-bold">✓ Active about brochure photo loaded</span>
                 </div>

@@ -1,16 +1,28 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import Image from "next/image"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Edit2, Trash2, Upload, Loader2, Image as ImageIcon } from "lucide-react"
+import { Plus, Edit2, Trash2, Loader2, Image as ImageIcon } from "lucide-react"
+import { courses as starterCourses } from "@/data/mockData"
+
+const starterCourseRows = starterCourses.map((course) => ({
+  id: course.id,
+  title: course.title,
+  description: course.description,
+  duration: course.duration,
+  class_timing: course.classTiming,
+  image_url: null,
+  status: "Active",
+}))
 
 export default function CoursesManagementPage() {
-  const supabase = createClient()
-  const [courses, setCourses] = useState<any[]>([])
+  const supabase = useMemo(() => createClient(), [])
+  const [courses, setCourses] = useState<any[]>(starterCourseRows)
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
 
@@ -28,7 +40,7 @@ export default function CoursesManagementPage() {
     file: null as File | null,
   })
 
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
     setFetching(true)
     try {
       const { data, error } = await supabase
@@ -36,21 +48,25 @@ export default function CoursesManagementPage() {
         .select("*")
         .order("created_at", { ascending: true })
 
-      if (!error && data) setCourses(data)
+      if (!error && data && data.length > 0) {
+        setCourses(data)
+      } else {
+        setCourses(starterCourseRows)
+      }
     } catch (err) {
       console.error(err)
     } finally {
       setFetching(false)
     }
-  }
+  }, [supabase])
 
   useEffect(() => {
     fetchCourses()
-  }, [])
+  }, [fetchCourses])
 
   const uploadFile = async (file: File, folder: string): Promise<string> => {
     const fileName = `${folder}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`
-    const { data, error } = await supabase.storage.from("academy").upload(fileName, file, {
+    const { error } = await supabase.storage.from("academy").upload(fileName, file, {
       cacheControl: "3600",
       upsert: true,
     })
@@ -184,7 +200,7 @@ export default function CoursesManagementPage() {
                 <div>
                   <div className="h-44 w-full bg-slate-100 relative overflow-hidden border-b border-slate-150">
                     {c.image_url ? (
-                      <img src={c.image_url} alt={c.title} className="w-full h-full object-cover" />
+                      <Image src={c.image_url} alt={c.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-350 bg-slate-50">
                         <ImageIcon className="w-10 h-10 text-slate-300" />
@@ -288,7 +304,7 @@ export default function CoursesManagementPage() {
                   {courseForm.imageUrl && !courseForm.file && (
                     <div className="flex items-center gap-2 mt-2">
                       <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200">
-                        <img src={courseForm.imageUrl} alt="Course Preview" className="w-full h-full object-cover" />
+                        <Image src={courseForm.imageUrl} alt="Course Preview" width={40} height={40} className="w-full h-full object-cover" />
                       </div>
                       <span className="text-[11px] text-emerald-600 font-bold">✓ Course image loaded</span>
                     </div>
