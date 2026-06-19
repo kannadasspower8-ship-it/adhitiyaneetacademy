@@ -1,0 +1,130 @@
+================================================================================
+          ADHITYA NEET ACADEMY — ADMIN CMS DASHBOARD PROCESS GUIDE
+================================================================================
+
+This document provides a complete guide to accessing, managing, and updating the
+Adhitya NEET Academy website using the custom Admin CMS Dashboard.
+
+--------------------------------------------------------------------------------
+1. PATHS & URLs
+--------------------------------------------------------------------------------
+- Login Page      : http://localhost:3000/login (or /login on the live site)
+- Dashboard Home  : http://localhost:3000/admin/dashboard (or /admin/dashboard)
+- Live Production : https://adithyneet.netlify.app
+
+--------------------------------------------------------------------------------
+2. ADMINISTRATOR AUTHENTICATION
+--------------------------------------------------------------------------------
+Access to the CMS is restricted to authorized administrators. Next.js middleware 
+(src/middleware.ts) protects all "/admin" paths. 
+
+To configure a new administrator account:
+1. Register/create the user email in your Supabase Auth Panel.
+2. Link the user to the admin role by executing the following query in the 
+   Supabase SQL Editor:
+   
+   -- Insert role mapping
+   INSERT INTO user_roles (id, role) 
+   VALUES ('USER_UUID_FROM_AUTH_TABLE', 'admin');
+   
+   -- Insert admin record
+   INSERT INTO admins (id, email) 
+   VALUES ('USER_UUID_FROM_AUTH_TABLE', 'admin@email.com');
+
+When an admin logs in at `/login`, the middleware verifies their user ID matches 
+the `admin` role before granting dashboard access.
+
+--------------------------------------------------------------------------------
+3. DASHBOARD cms PROCESSES & SECTIONS
+--------------------------------------------------------------------------------
+
+A. DASHBOARD DESK (Dashboard Home)
+-----------------------------------
+- Metric Cards: Instantly view counts for Active Courses, Gallery Assets, and
+  Topper Achievements from the live database.
+- Quick Actions: Shortcuts to update the Homepage, publish new courses, edit
+  contacts, or upload gallery photos.
+- Recent Updates Timeline: A dynamic activity feed showing the most recently
+  published courses, topper highlights, or gallery photos.
+
+B. HOMEPAGE CMS (/admin/dashboard/home)
+---------------------------------------
+Use this view to update the main elements of the landing page:
+- Hero Banner: Edit the main title text, introductory description, CTA button label 
+  (e.g., "Apply Now"), and upload the main background hero photograph.
+- Key Metrics (4 slots): Configure high-impact statistics (e.g., "2,500+ Students 
+  Trained", "450+ Medical Seats").
+- "Why Choose Us": Edit the section title, summary description, and update the 
+  titles/descriptions for the three core advantage items.
+- Success Highlights: Add, update, or remove top performers shown in the home page 
+  carousel. Input student name, NEET score (e.g. 715/720), AIR rank, and year.
+- Live Preview: Click the "Live Preview" button at any time to see an interactive, 
+  responsive mockup of the hero section before saving.
+- Saving: Click "Save Changes" to sync changes to the `website_home` table.
+
+C. ABOUT PAGE CMS (/admin/dashboard/about)
+------------------------------------------
+Edit the academy history, story, mission, and vision:
+- Academy Story: Edit the main history text (Story) and secondary overview.
+- Campus Photograph: Choose and upload a new representative image.
+- Mission Statement: Edit the target mission text block.
+- Vision Statement: Edit the future vision text block.
+- Saving: Click "Save About Details" to sync changes to the `website_about` table.
+
+D. COURSES MANAGEMENT (/admin/dashboard/courses)
+------------------------------------------------
+Complete management of the academic programs grid:
+- Create Program: Click "Add Course". Enter course name, duration (e.g., "1 Year"), 
+  class timings, brochure description, upload a preview image, and click "Publish".
+- Edit Program: Click "Edit" on any card to load its details into the form editor. 
+  Make changes and click "Save Changes".
+- Delete Program: Click "Delete" on any card to permanently remove the program 
+  from the database.
+- Toggle Visibility: Select "Active" to display on public pages or "Inactive" 
+  to hide it without deleting.
+- Data Storage: Updates are instantly saved in the `courses` table.
+
+E. GALLERY CMS (/admin/dashboard/gallery)
+-----------------------------------------
+Manage campus life assets:
+- Upload Images: Drag/choose an image file, add an optional description/caption, 
+  and click "Add Image". The file is uploaded to the Supabase Storage bucket 
+  `academy` and a record is created in the `gallery` table.
+- Edit Caption: Click "Edit" on any gallery card, type the new caption, and click 
+  "Save".
+- Delete Image: Click "Delete" to remove it from the homepage photo ledger.
+
+F. ACHIEVEMENTS CMS (/admin/dashboard/achievements)
+---------------------------------------------------
+Manage toppers and score achievements:
+- Add Topper: Click "Add Topper". Enter student name, rank (e.g., "AIR 12"), 
+  score (e.g., "715 / 720"), academic year (e.g., "2025"), upload a topper photo, 
+  and click "Publish".
+- Edit/Delete: Modify or delete records from the live achievements ledger.
+- Data Storage: Syncs with the `achievements` table.
+
+G. CONTACT CMS (/admin/dashboard/contact)
+-----------------------------------------
+Update primary communication helplines:
+- Telephones: Edit the Primary Phone helpline.
+- Whatsapp: Edit the direct WhatsApp communication number.
+- Email: Edit the official academy support mailbox.
+- Address: Edit the complete postal address (displayed in the footer & contact page).
+- Google Maps Embed: Paste the Google Maps iframe source link (updates the interactive 
+  map on the public page).
+- Social Links: Update the official Instagram profile url. Other links (Facebook, 
+  Twitter, YouTube) are left blank to display only Instagram on the frontend.
+- Saving: Click "Save Contact Details" to sync changes to the `contact_information` table.
+
+--------------------------------------------------------------------------------
+4. DATA SYNCING AND OFFLINE PROTECTION
+--------------------------------------------------------------------------------
+The website's page loaders (src/lib/cms-loader.ts) fetch data dynamically from 
+Supabase. To prevent page loading failure in case of database downtime or network 
+latency:
+1. React Cache: Queries are cached during the request cycle to eliminate redundant 
+   API roundtrips.
+2. Offline Fallback: If Supabase connection fails or credentials are not configured, 
+   the application dynamically falls back to the clean, local static parameters defined 
+   in `src/data/cmsContent.ts` and `src/data/mockData.ts`.
+================================================================================
