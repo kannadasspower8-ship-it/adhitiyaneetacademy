@@ -1,0 +1,1345 @@
+================================================================================
+  ADHITHYA NEET ACADEMY — COMPLETE PROJECT DOCUMENTATION
+  Generated: 2026-06-18
+  Purpose: Full technical reference so any AI assistant can fully understand,
+           maintain, and extend this project without reading the codebase again.
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 1 — PROJECT OVERVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Project Name  : Adhithya NEET Academy Website + Admin CMS
+Client        : Adhithya NEET Academy, Erode, Tamil Nadu
+Domain        : adhityaneetacademy.in
+Local Dev URL : http://localhost:3000
+Admin URL     : http://localhost:3000/admin/dashboard
+Login URL     : http://localhost:3000/login
+Dev Command   : npm run dev (uses Next.js Turbopack)
+
+PURPOSE:
+  - A premium public-facing website for a NEET coaching institute in Tamil Nadu.
+  - A fully functional Admin CMS dashboard (at /admin/dashboard) for staff to
+    update website content without touching code or Supabase directly.
+  - Data is stored in Supabase (PostgreSQL + Storage).
+  - The public site reads live data from Supabase; falls back to local static
+    data if Supabase is unavailable.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 2 — TECH STACK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Framework      : Next.js 15.5.19 (App Router, React 19)
+Language       : TypeScript 5
+Styling        : Tailwind CSS v4 (using @import "tailwindcss" + @theme block)
+UI Components  : shadcn/ui (Card, Button, Input, Label — manually installed)
+Animation      : Framer Motion v12
+Icons          : Lucide React v1.17
+Database       : Supabase (PostgreSQL)
+Auth           : Supabase Auth (email/password only)
+Storage        : Supabase Storage (bucket: "academy")
+ORM/Client     : @supabase/ssr (SSR-safe client), @supabase/supabase-js
+Build Tool     : Next.js Turbopack
+
+IMPORTANT PACKAGES:
+  - @supabase/ssr: ^0.12.0    — handles server/client Supabase clients with cookies
+  - framer-motion: ^12.40.0  — animations (FadeIn, Gallery lightbox, Header mobile)
+  - lucide-react: ^1.17.0    — all icons throughout the app
+  - xlsx: ^0.18.5            — Excel export utility (lib/excel-export.ts)
+  - clsx + tailwind-merge    — className utility functions (lib/utils.ts)
+
+ENV VARIABLES (stored in .env.local — NOT committed to git):
+  NEXT_PUBLIC_SUPABASE_URL=<your-supabase-project-url>
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 3 — DESIGN SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: src/app/globals.css
+
+THEME (defined in @theme block — Tailwind CSS v4 syntax):
+  --color-background    : #FAFAF8   (warm off-white — page background)
+  --color-foreground    : #111827   (near-black — body text)
+  --color-primary       : #0B132B   (deep navy — hero bg, headings, footer, sidebar)
+  --color-primary-foreground: #FAFAF8
+  --color-secondary     : #1C2541   (darker navy — card bg, admin sidebar)
+  --color-secondary-foreground: #FAFAF8
+  --color-accent        : #C9A227   (gold — icons, highlights, CTA buttons)
+  --color-accent-foreground: #111827
+  --color-gold          : #D4AF37   (gold variant — button gradients)
+  --color-gold-foreground: #FFFFFF
+  --color-border        : #E5E7EB
+  --color-ring          : #C9A227
+  --color-muted         : #F4F4F3
+  --color-muted-foreground: #4B5563
+
+TYPOGRAPHY:
+  --font-sans   : var(--font-inter)     → Inter (Google Font, loaded in layout.tsx)
+  --font-heading: var(--font-playfair)  → Playfair Display (Google Font, serif+italic)
+  All H1–H6 use font-heading (Playfair). Body uses font-sans (Inter).
+
+BORDER RADIUS TOKENS:
+  --radius-3xl: 32px
+  --radius-2xl: 24px
+  --radius-xl : 18px
+  --radius-lg : 12px
+  --radius-md : 8px
+  --radius-sm : 4px
+
+DESIGN PHILOSOPHY:
+  - Royal/luxury/premium — Navy + Gold color palette
+  - Subtle micro-animations (FadeIn on scroll, hover transitions)
+  - Glassmorphism overlays on hero image cards (backdrop-blur + bg-opacity)
+  - Ambient radial spotlight backgrounds (blurred div circles — NOT heavy images)
+  - Grid dot patterns (CSS linear-gradient repeating pattern as texture)
+  - Gold gradient text on key heading words using bg-clip-text
+  - All cards use border-t-2 border-t-transparent hover:border-t-accent
+    (gold top-border reveal on hover — consistent UI pattern throughout)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 4 — DIRECTORY STRUCTURE (FULL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+c:\Users\T Kannadass\OneDrive\Desktop\ADHITHYA NEET\
+├── package.json
+├── tsconfig.json
+├── next.config.ts (or .js)
+├── .env.local                  ← NEVER commit this
+├── PROJECT_DOCUMENTATION.txt  ← This file
+└── src/
+    ├── middleware.ts            ← Next.js middleware entry point
+    ├── app/
+    │   ├── layout.tsx           ← Root HTML shell (fonts, metadata, RootLayoutClient)
+    │   ├── RootLayoutClient.tsx ← Client: shows/hides Header+Footer based on route
+    │   ├── globals.css          ← Design system tokens + base styles
+    │   ├── favicon.ico
+    │   ├── page.tsx             ← Home page (7 sections)
+    │   ├── about/
+    │   │   └── page.tsx         ← About page (hero, story, mission, vision, values)
+    │   ├── courses/
+    │   │   └── page.tsx         ← Courses page (full listing from Supabase)
+    │   ├── achievements/
+    │   │   └── page.tsx         ← Achievements page (toppers grid + stats)
+    │   ├── gallery/
+    │   │   └── page.tsx         ← Gallery page (masonry + lightbox, "use client")
+    │   ├── contact/
+    │   │   └── page.tsx         ← Contact page (form + map + info cards)
+    │   ├── login/
+    │   │   └── page.tsx         ← Admin login portal ("use client")
+    │   └── admin/
+    │       └── dashboard/
+    │           ├── layout.tsx       ← Admin sidebar layout (desktop + mobile drawer)
+    │           ├── page.tsx         ← Admin dashboard overview (KPI stats + quick actions)
+    │           ├── home/
+    │           │   └── page.tsx     ← Admin: Edit homepage hero, stats, why-us, highlights
+    │           ├── about/
+    │           │   └── page.tsx     ← Admin: Edit about page content
+    │           ├── courses/
+    │           │   └── page.tsx     ← Admin: Add/Edit/Delete courses (CRUD)
+    │           ├── gallery/
+    │           │   └── page.tsx     ← Admin: Upload/Delete gallery images
+    │           ├── achievements/
+    │           │   └── page.tsx     ← Admin: Add/Edit/Delete NEET toppers
+    │           ├── contact/
+    │           │   └── page.tsx     ← Admin: Edit phone, email, address, WhatsApp, social
+    │           └── settings/
+    │               └── page.tsx     ← Admin: Read-only settings (academy name, admin email)
+    ├── components/
+    │   ├── layout/
+    │   │   ├── Header.tsx           ← Public navbar (transparent on home, sticky on scroll)
+    │   │   └── Footer.tsx           ← Public footer (4-column, navy theme)
+    │   ├── shared/
+    │   │   ├── FadeIn.tsx           ← Scroll-triggered animation wrapper (Framer Motion)
+    │   │   └── TestimonialsSlider.tsx ← Responsive testimonial carousel
+    │   └── ui/
+    │       ├── button.tsx           ← shadcn Button component
+    │       ├── card.tsx             ← shadcn Card + CardHeader/Content/Footer/Title
+    │       ├── input.tsx            ← shadcn Input
+    │       └── label.tsx            ← shadcn Label
+    ├── data/
+    │   ├── mockData.ts             ← Static fallback data (stats, features, topRanks,
+    │   │                              courses, testimonials, coreValues)
+    │   └── cmsContent.ts           ← Default text content for all pages
+    └── lib/
+        ├── utils.ts                ← cn() helper (clsx + tailwind-merge)
+        ├── cms-loader.ts           ← Smart data bridge (Supabase → page)
+        ├── excel-export.ts         ← Export admin data as .xlsx
+        └── supabase/
+            ├── client.ts           ← Browser (client-side) Supabase client
+            ├── server.ts           ← Server (SSR) Supabase client (uses cookies)
+            └── middleware.ts       ← Session refresh + route protection logic
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 5 — SUPABASE DATABASE SCHEMA (ALL TABLES)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NOTE: All tables are in the "public" schema in Supabase.
+RLS (Row Level Security) should be configured on each table.
+Admin CRUD uses anon key — ensure RLS policies allow authenticated admin writes.
+
+----------------------------------------------------------------------
+TABLE: contact_information
+----------------------------------------------------------------------
+Purpose: Stores all academy contact details (phone, email, address,
+         WhatsApp, social links, Google Maps embed URL).
+         Has a SINGLE row with id = 'main'.
+
+Columns:
+  id          TEXT PRIMARY KEY DEFAULT 'main'
+  phone       TEXT    ← Primary phone number (e.g. "9600607680")
+  email       TEXT    ← Primary email (e.g. "adhityaneetacademy@gmail.com")
+  whatsapp    TEXT    ← WhatsApp number digits only (e.g. "9600607680")
+  address     TEXT    ← Full postal address
+  map_embed   TEXT    ← Full Google Maps embed src URL (iframe src)
+  facebook    TEXT    ← Facebook page URL
+  instagram   TEXT    ← Instagram profile URL
+  twitter     TEXT    ← Twitter/X profile URL
+  youtube     TEXT    ← YouTube channel URL
+  updated_at  TIMESTAMPTZ
+
+Current default data (from cmsContent.ts):
+  phone     = "9600607680"
+  email     = "adhityaneetacademy@gmail.com"
+  whatsapp  = "9600607680"
+  address   = "Royal Theatre, 24/8, near Nalli Hospital Road, opposite
+               Main Road, Municipal Colony, Annamalai Layout, Erode,
+               Tamil Nadu 638011"
+  map_embed = "https://www.google.com/maps/embed?..."
+  facebook  = "https://facebook.com/adhityaneet"
+  instagram = "https://instagram.com/adhityaneet"
+  twitter   = "https://twitter.com/adhityaneet"
+  youtube   = "https://youtube.com/c/adhityaneet"
+
+How it's used:
+  - getGlobalSettings() in cms-loader.ts reads this table
+  - Used on: Home CTA buttons, Contact page, Header phone, Footer, WhatsApp button
+
+----------------------------------------------------------------------
+TABLE: website_home
+----------------------------------------------------------------------
+Purpose: Stores all editable content for the Home page hero section.
+         Has a SINGLE row with id = 'main'.
+
+Columns:
+  id                          TEXT PRIMARY KEY DEFAULT 'main'
+  hero_title                  TEXT    ← Main H1 title text
+  hero_description            TEXT    ← Hero subtitle paragraph
+  hero_image                  TEXT    ← URL of hero image (Supabase Storage or external)
+  cta_text                    TEXT    ← CTA button label text
+  stats                       JSONB   ← Array of {label, value} objects (4 stats)
+  why_choose_us_title         TEXT    ← "Why Choose Us" section heading
+  why_choose_us_description   TEXT    ← "Why Choose Us" section description
+  why_choose_us_items         JSONB   ← Array of {icon, title, description} items
+  success_highlights          JSONB   ← Array of {name, score, rank, year} topper objects
+  updated_at                  TIMESTAMPTZ
+
+Stats JSON example:
+  [
+    {"label": "NEET SUCCESS RATE", "value": "99.2%"},
+    {"label": "NEET SCORE AVERAGE", "value": "655+"},
+    {"label": "YEARS OF ACADEMIC LEADERSHIP", "value": "15+"},
+    {"label": "MEDICAL COLLEGE ADMISSIONS", "value": "1,250+"}
+  ]
+
+Why Choose Us Items JSON example:
+  [
+    {"icon": "BookOpen", "title": "Elite Faculty Panel", "description": "..."},
+    {"icon": "Brain", "title": "Rigorous Core Curriculum", "description": "..."},
+    {"icon": "Trophy", "title": "Daily Advanced Assessments", "description": "..."}
+  ]
+
+Success Highlights JSON example:
+  [
+    {"name": "Adhithya K.", "score": "715/720", "rank": "AIR 12", "year": "2025"}
+  ]
+
+----------------------------------------------------------------------
+TABLE: website_about
+----------------------------------------------------------------------
+Purpose: Stores editable content for the About page.
+         Has a SINGLE row with id = 'main'.
+
+Columns:
+  id              TEXT PRIMARY KEY DEFAULT 'main'
+  about_content   TEXT    ← Academy story paragraph 1
+  overview        TEXT    ← Academy story paragraph 2
+  mission         TEXT    ← Mission statement content
+  vision          TEXT    ← Vision statement content
+  images          JSONB   ← Array of image URLs (first one used as story image)
+  updated_at      TIMESTAMPTZ
+
+----------------------------------------------------------------------
+TABLE: courses
+----------------------------------------------------------------------
+Purpose: Dynamic list of coaching batches/courses. Multiple rows.
+         Admin can Add/Edit/Delete courses.
+
+Columns:
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid()
+  title         TEXT NOT NULL    ← Course name (e.g. "NEET Repeaters")
+  description   TEXT             ← Course description paragraph
+  duration      TEXT             ← Duration (e.g. "1 Year", "Intensive Capsule")
+  target        TEXT             ← Target audience label (e.g. "Long Term Program")
+  days          TEXT             ← Schedule days (e.g. "Thursday, Friday, Saturday")
+  class_timing  TEXT             ← Timing (e.g. "9:30 AM - 5:00 PM")
+  highlights    JSONB            ← Array of strings (bullet point features)
+  image_url     TEXT             ← Course brochure image URL
+  status        TEXT DEFAULT 'Active'  ← 'Active' or 'Inactive'
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+
+Query used by public site:
+  SELECT * FROM courses WHERE status = 'Active' ORDER BY created_at ASC
+
+Query used by admin dashboard:
+  SELECT * FROM courses ORDER BY created_at ASC
+
+Highlights JSON example:
+  ["Structured subject revision modules", "Daily performance diagnostic reports",
+   "Personal faculty mentoring & counseling"]
+
+Current static mock data (fallback):
+  1. NEET Repeaters — 1 Year, Long Term Program, 9:30 AM - 5:00 PM
+  2. NEET Weekend Batch — Academic Year, Schooling Students, Thu/Fri/Sat, 6:30-8:30 PM
+  3. Test Batch — Evaluation Program, Self-Study Students, Thu/Fri/Sat, 6:30-8:30 PM
+  4. Crash Course — Intensive Capsule, Upcoming NEET Aspirants, Thu/Fri/Sat, 6:30-8:30 PM
+
+----------------------------------------------------------------------
+TABLE: gallery
+----------------------------------------------------------------------
+Purpose: Dynamic photo gallery. Multiple rows.
+         Admin can upload and delete images.
+
+Columns:
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
+  image_url   TEXT NOT NULL    ← Public URL from Supabase Storage
+  caption     TEXT             ← Image description / alt text
+  category    TEXT             ← Filter category (e.g. "Campus", "Events",
+                                  "Felicitation", "Classrooms")
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+
+Gallery filter categories used in public site:
+  "All", "Campus", "Events", "Felicitation", "Classrooms"
+
+Fallback static images (3 Unsplash images) shown if no DB data exists.
+
+----------------------------------------------------------------------
+TABLE: achievements
+----------------------------------------------------------------------
+Purpose: NEET toppers / student achievements. Multiple rows.
+         Admin can Add/Edit/Delete.
+
+Columns:
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
+  name        TEXT NOT NULL    ← Student full name
+  rank        TEXT             ← Rank label (e.g. "AIR 12")
+  score       TEXT             ← Score string (e.g. "715 / 720")
+  year        TEXT             ← NEET year (e.g. "2025")
+  image_url   TEXT             ← Student photo URL
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+
+Query used by public site:
+  SELECT * FROM achievements ORDER BY created_at DESC
+
+Current static mock data (fallback):
+  1. Adhithya K. — AIR 12, 715/720, 2025
+  2. Siddharth Sen — AIR 24, 710/720, 2025
+  3. Meera Krishnan — AIR 47, 705/720, 2024
+  4. Rhea Nair — AIR 89, 700/720, 2024
+
+----------------------------------------------------------------------
+TABLE: user_roles (optional fallback for auth)
+----------------------------------------------------------------------
+Purpose: Secondary role lookup if user_metadata.role is not set.
+
+Columns:
+  id    UUID PRIMARY KEY (matches auth.users.id)
+  role  TEXT  ← "admin" for admin users
+
+Note: Primary role check is via Supabase Auth user_metadata.role = 'admin'.
+      This table is only queried as a fallback in the login page.
+
+----------------------------------------------------------------------
+TABLE: website_content (legacy / generic fallback table)
+----------------------------------------------------------------------
+Purpose: Generic key-value store for any miscellaneous page sections
+         not covered by dedicated tables.
+
+Columns:
+  key       TEXT PRIMARY KEY   ← Section identifier (e.g. "courses_hero")
+  content   JSONB              ← Arbitrary content object
+
+This table is queried last in cms-loader.ts as a final fallback after
+checking dedicated tables (website_home, website_about, etc.).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 6 — SUPABASE STORAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Bucket name: "academy" (PUBLIC bucket — all URLs are publicly accessible)
+
+Folder structure inside the bucket:
+  academy/home/       ← Hero images uploaded from Admin > Home Page
+  academy/courses/    ← Course brochure images uploaded from Admin > Courses
+  academy/gallery/    ← Gallery photos uploaded from Admin > Gallery
+  academy/about/      ← About page images
+  academy/achievements/ ← Student photos (if uploaded from admin)
+
+Upload pattern used in all admin pages:
+  const fileName = `{folder}/{Date.now()}_{sanitized_filename}`
+  supabase.storage.from("academy").upload(fileName, file, { upsert: true })
+  supabase.storage.from("academy").getPublicUrl(fileName) → returns publicUrl
+
+IMPORTANT: The bucket must be set to PUBLIC in Supabase dashboard.
+           Without this, image URLs will not work on the public website.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 7 — AUTHENTICATION SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Auth Provider: Supabase Auth (email/password only)
+No public registration — all admin accounts created manually in Supabase dashboard.
+
+HOW TO CREATE AN ADMIN ACCOUNT:
+  1. Go to Supabase Dashboard > Authentication > Users > Add User
+  2. Enter email and password
+  3. After creating, click the user > Edit user
+  4. In "Raw user meta data" add: {"role": "admin"}
+  5. Save — this user can now log in at /login
+
+LOGIN FLOW (src/app/login/page.tsx):
+  1. User submits email + password form
+  2. supabase.auth.signInWithPassword() is called
+  3. On success, check data.user.user_metadata?.role
+  4. If role is "admin" → redirect to /admin/dashboard
+  5. If NOT admin:
+     a. Try fallback: query user_roles table by user.id
+     b. If still not admin → sign out immediately + show error
+  6. Non-admin accounts can never access the admin panel
+
+ROUTE PROTECTION (src/lib/supabase/middleware.ts via src/middleware.ts):
+  - All requests pass through updateSession()
+  - If pathname starts with /admin/dashboard:
+    - No user session → redirect to /login
+    - User session but role !== "admin" → redirect to /login
+  - If pathname === /login AND user is already admin → redirect to /admin/dashboard
+
+SUPABASE CLIENT TYPES:
+  src/lib/supabase/client.ts  → Browser client (createBrowserClient from @supabase/ssr)
+                                 Used in "use client" components (admin pages, gallery)
+  src/lib/supabase/server.ts  → Server client (createServerClient from @supabase/ssr)
+                                 Uses Next.js cookies(). Used in Server Components
+                                 (home page, about page, courses page, etc.)
+  src/lib/supabase/middleware.ts → Creates a server client to refresh sessions
+                                   and enforce route protection in middleware.
+
+IMPORTANT: Never mix client and server clients. Server components must use
+           createClient from lib/supabase/server.ts. Client components ("use client")
+           must use createClient from lib/supabase/client.ts.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 8 — CMS DATA LOADING PATTERN (cms-loader.ts)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: src/lib/cms-loader.ts
+
+This is the MOST IMPORTANT file. It is the bridge between Supabase database
+tables and the public Next.js frontend pages.
+
+FALLBACK CHAIN (always try DB first, then fallback):
+  Level 1: Supabase Database (live data from admin)
+  Level 2: cmsContent.ts (default text for each section)
+  Level 3: mockData.ts (static fallback arrays for courses/achievements)
+
+EXPORTED FUNCTIONS:
+
+1. getGlobalSettings(customClient?)
+   - Reads from: contact_information table (id = 'main')
+   - Returns: { phonePrimary, phoneSecondary, emailPrimary, emailSecondary,
+                address, mapEmbed, whatsappNumber, socialLinks: {facebook, instagram, twitter, youtube} }
+   - Used on: Home page (CTA buttons), Contact page, Header, Footer, WhatsApp button
+
+2. getSectionContent(key, fallback, customClient?)
+   - key = "home_hero" → reads website_home (id='main'), returns hero fields
+   - key = "home_why_choose_us" → reads website_home, returns why-us fields
+   - key = "about_story" → reads website_about, returns story content + image
+   - key = "about_mission" → reads website_about, returns mission content
+   - key = "about_vision" → reads website_about, returns vision content
+   - Any other key → tries website_content table with that key (generic fallback)
+   - fallback = the cmsContent.ts object for that section
+
+3. getDynamicCourses(customClient?)
+   - Reads from: courses table (WHERE status = 'Active' ORDER BY created_at ASC)
+   - Maps DB columns to: { id, title, duration, target, days, classTiming, description, highlights, image }
+   - Falls back to mockData.courses if DB is empty or errors
+
+4. getDynamicGallery(customClient?)
+   - Reads from: gallery table (ORDER BY created_at DESC)
+   - Maps to: { id, src, alt, category }
+   - Falls back to 3 hardcoded Unsplash images if empty
+
+5. getDynamicAchievements(customClient?)
+   - Reads from: achievements table (ORDER BY created_at DESC)
+   - Maps to: { name, rank, score, year, image }
+   - Falls back to mockData.topRanks if empty
+
+KEY PATTERN: All functions accept an optional customClient parameter.
+  Server components pass their server-side supabase client.
+  Client components (gallery page) call without argument → uses browser client.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 9 — LAYOUT & NAVIGATION SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FILE: src/app/layout.tsx (Root Layout — Server Component)
+  - Loads Inter + Playfair Display fonts from Google Fonts
+  - Sets global metadata: title, description
+  - Wraps all pages in <html> and <body>
+  - Renders <RootLayoutClient> which conditionally shows Header/Footer
+
+FILE: src/app/RootLayoutClient.tsx ("use client")
+  CRITICAL: This component reads the current pathname and decides:
+    - If pathname starts with /admin OR /login:
+      → Only render <main>{children}</main> — NO Header, NO Footer, NO WhatsApp button
+    - Otherwise (public pages):
+      → Render <Header /> + <main>{children}</main> + <Footer />
+      → + Fixed floating WhatsApp button (bottom-right, z-index 90)
+  
+  WhatsApp button:
+    - href: https://wa.me/919600607680?text=Hello%20ADHITYA%20NEET%20ACADEMY...
+    - Uses MessageCircle icon from lucide-react
+    - Has animated gold pulse indicator on top-right corner
+    - Colors: bg-primary (navy), text-accent (gold), hover: bg-secondary text-white
+
+FILE: src/components/layout/Header.tsx ("use client")
+  FEATURES:
+    - Fixed positioned (z-50) transparent header that becomes solid on scroll
+    - On home page (/): starts transparent (text white) → solid on scroll (navy bg)
+    - On all other pages: always solid (navy bg, white text)
+    - Logo: GraduationCap icon + "ADHITYA" (heading font) + "NEET ACADEMY" (accent)
+    - Desktop nav links: Home, About, Courses, Achievements, Gallery, Contact
+    - Active link indicator: gold underline that expands on hover/active
+    - Phone number link with Phone icon (pulls from cmsContent.global.phonePrimary)
+    - "Apply Now" button → /contact (gold gradient button)
+    - Mobile: Hamburger (Menu icon) → animated slide-in menu (Framer Motion AnimatePresence)
+    - Mobile menu shows all nav links + phone + "Apply Now" button
+    - Closes mobile menu on link click
+
+FILE: src/components/layout/Footer.tsx (Server Component)
+  FEATURES:
+    - 4-column grid layout: Brand Info | Quick Links | Our Programs | Contact Us
+    - Navy primary background (#0B132B) with gold accent text/icons
+    - Brand column: Logo + footer description + social icon links (SVG icons)
+    - Quick Links: About, Courses, Achievements, Gallery, Contact
+    - Programs: NEET Foundation, NEET Target, NEET Repeaters, Crash Course, Online Test Series
+    - Contact: MapPin (address) + Phone (phone) + Mail (email) — from cmsContent.global
+    - Bottom bar: copyright + Privacy Policy + Terms of Service links
+    - Social links (Facebook, Instagram, Twitter, YouTube) — custom SVG icons, show if URL exists
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 10 — PUBLIC WEBSITE PAGES (DETAILED)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+All public pages are Server Components (except gallery/page.tsx which is "use client").
+All use export const dynamic = "force-dynamic" to prevent static caching.
+
+----------------------------------------------------------------------
+PAGE 1: HOME (src/app/page.tsx)
+----------------------------------------------------------------------
+Route: /
+Type: Server Component
+Data fetched: getGlobalSettings, getSectionContent("home_hero"), getSectionContent("home_why_choose_us"),
+              getDynamicCourses, getDynamicAchievements
+
+SECTIONS (top to bottom):
+  1. HERO SECTION
+     - Full-viewport dark navy bg (#0B132B)
+     - Subtle grid dot pattern overlay (CSS linear-gradient repeating)
+     - Two ambient radial glows (gold + blue) for luxury feel
+     - Blurred background image (Unsplash medical photo, opacity 10%)
+     - Left column: Gold pill badge + H1 title (some words highlighted gold) +
+                    description + two CTA buttons + student avatar row
+     - Right column (desktop only): Hero image in rounded container with
+                    glassmorphic overlay card (trophy icon + title + description)
+     - CTA Button 1: "Get Admission Details" → WhatsApp link (gold gradient)
+     - CTA Button 2: "Contact Us" → /contact (outline style)
+     - Avatar row shows 4 pravatar.cc placeholder student photos + star rating
+
+  2. STATISTICS SECTION
+     - White bg (#FAFAF8) with dividers between stat items
+     - 4 stats in grid: value (large serif font) + label (tiny uppercase)
+     - Data from academyStats in mockData.ts:
+       "99.2%" NEET SUCCESS RATE | "655+" NEET SCORE AVERAGE |
+       "15+" YEARS OF ACADEMIC LEADERSHIP | "1,250+" MEDICAL COLLEGE ADMISSIONS
+
+  3. WHY CHOOSE US
+     - Light warm bg (#FAFAF8)
+     - Section heading with Sparkles icon badge
+     - 4 feature cards from mockData.features:
+       Elite Faculty Panel | Rigorous Core Curriculum |
+       Daily Advanced Assessments | Personal Mentorship Desk
+     - Cards: white bg, hover shadow + gold top border reveal
+     - Icon in card: dark square container, hover flips to navy bg + gold icon
+
+  4. TOP ACHIEVERS
+     - White bg
+     - Title + "View All Results" button → /achievements
+     - 4 achievement cards from getDynamicAchievements (max first 4)
+     - Each card: portrait image with gradient overlay + glassmorphic bottom panel
+       showing gold rank badge + student name + score + year
+
+  5. COURSES
+     - Dark navy bg (#0B132B) with grid overlay
+     - Title + 4 course cards from getDynamicCourses (max first 4)
+     - Course cards: semi-transparent dark bg, accent/gold border on hover
+       Shows: target badge + duration + title + schedule/timing + description + highlights
+     - Card footer: "WhatsApp" button (gold) + "Contact" button (outline)
+
+  6. TESTIMONIALS
+     - White/warm bg
+     - Title: "Voices of Success"
+     - TestimonialsSlider component (12 testimonials from mockData.testimonials)
+
+  7. CTA SECTION
+     - Dark navy bg with radial ambient glow
+     - Title + description + two buttons: "Call Now" + "WhatsApp Now"
+     - Phone from settings.phonePrimary, WhatsApp from settings.whatsappNumber
+
+KEY UTILITY in page.tsx:
+  formatTitle(title) function: scans title words and highlights specific keywords
+  with gold gradient. Keywords: ["neet", "success", "journey", "academy",
+  "excellence", "dream", "results"]
+
+----------------------------------------------------------------------
+PAGE 2: ABOUT (src/app/about/page.tsx)
+----------------------------------------------------------------------
+Route: /about
+Type: Server Component
+Data fetched: getSectionContent for "about_hero", "about_story", "about_mission",
+              "about_vision". coreValues from mockData.ts.
+
+SECTIONS:
+  1. Header: Gold pill badge + H1 title + description (all gold gradient on keywords)
+  2. Story Section: 2-column grid — left: story image, right: title + 2 paragraphs + 2 stat boxes
+     Stats: "655+" avg score + "15+ Years" legacy
+  3. Mission & Vision: 2 cards side by side
+     - Mission card: Dark navy bg (#0B132B), Target icon, navy gold top bar
+     - Vision card: Darker navy (#1C2541), Eye icon, navy gold top bar
+  4. Core Values: 4 cards from mockData.coreValues
+     - Academic Rigour, Empathetic Mentoring, Data-Driven Pedagogy, Absolute Partnership
+     - Cards: white bg, icon rotates through Award/Heart/Target/Eye
+
+----------------------------------------------------------------------
+PAGE 3: COURSES (src/app/courses/page.tsx)
+----------------------------------------------------------------------
+Route: /courses
+Type: Server Component
+Data fetched: getDynamicCourses, getSectionContent("courses_hero")
+
+SECTIONS:
+  1. Header Banner: Full navy bg with grid texture + background image, large H1 + description
+  2. Course Cards Grid: 2 columns (lg), full list from getDynamicCourses
+     Each card shows:
+       - Target badge + duration (with Clock icon)
+       - Course title (hover turns gold)
+       - Schedule + timing info
+       - Description paragraph
+       - "Course Highlights" section with checkmark bullets
+       - Footer: "WhatsApp Now" (gold) + "Contact Us" (outline) buttons
+
+----------------------------------------------------------------------
+PAGE 4: ACHIEVEMENTS (src/app/achievements/page.tsx)
+----------------------------------------------------------------------
+Route: /achievements
+Type: Server Component
+Data fetched: getDynamicAchievements
+
+SECTIONS:
+  1. Header: Gold badge + H1 + description
+  2. Stats Grid: 4 stat cards from cmsContent.achievementsPage.stats:
+     AIR Top 100: 12 | 99th Percentile: 84 | State Ranks: 28 | Medical Seats: 420+
+  3. Toppers Grid: 4 columns, same card design as Home page achievers section
+     (portrait + glassmorphic overlay with rank/name/score)
+  4. Bottom CTA Card: Dark navy card with TrendingUp watermark icon
+     "Coimbatore's Upward Success Curve" title + description
+
+----------------------------------------------------------------------
+PAGE 5: GALLERY (src/app/gallery/page.tsx)
+----------------------------------------------------------------------
+Route: /gallery
+Type: CLIENT COMPONENT ("use client") — cannot be Server Component due to
+      image lightbox state and gallery loading
+Data fetched: getDynamicGallery() called in useEffect (client-side)
+
+FEATURES:
+  - Filter buttons: All | Campus | Events | Felicitation | Classrooms
+  - Masonry CSS grid (columns-1 sm:columns-2 lg:columns-3)
+  - Framer Motion AnimatePresence for smooth filter animations
+  - Image hover: dark overlay appears with ZoomIn icon + caption + category
+  - Click any image → opens LIGHTBOX (fullscreen modal with close button)
+  - Lightbox: navy bg backdrop-blur + image centered + X close button
+  - Loading spinner while fetching from Supabase
+  - Empty state message if no images in category
+
+----------------------------------------------------------------------
+PAGE 6: CONTACT (src/app/contact/page.tsx)
+----------------------------------------------------------------------
+Route: /contact
+Type: Server Component
+Data fetched: getGlobalSettings
+
+SECTIONS:
+  1. Header Banner: Navy bg + grid texture + "ADMISSIONS OPEN" badge + H1 + description
+  2. 2-column layout (1 col info + 2 col form):
+     Left: Office Address card, Phone card, Email card, WhatsApp card
+           (each: icon with gold bg + label + clickable contact detail)
+     Right: Full inquiry form card with fields:
+            First Name, Last Name, Email, Phone, Interested Course (dropdown), Message
+            Dropdown options: NEET Foundation (11), NEET Target (12), NEET Repeaters, Crash Course
+            "Send Message" button (NOTE: form is UI only — no backend submission yet)
+  3. Google Maps embed: iFrame with map_embed URL from settings, grayscale filter
+
+----------------------------------------------------------------------
+PAGE 7: LOGIN (src/app/login/page.tsx)
+----------------------------------------------------------------------
+Route: /login
+Type: CLIENT COMPONENT ("use client")
+No Header/Footer shown (blocked by RootLayoutClient)
+
+FEATURES:
+  - Centered card on slate-50 bg
+  - Brand logo at top (GraduationCap icon + "ADHITYA NEET ACADEMY")
+  - Email + password inputs
+  - Error message display on failed auth
+  - Loading spinner during auth
+  - On success: role check → redirect to /admin/dashboard
+  - Non-admin → signed out + error shown
+  - "Authorized personnel only" note at bottom
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 11 — ADMIN DASHBOARD (DETAILED)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+All admin pages are CLIENT COMPONENTS ("use client").
+All use the BROWSER Supabase client from lib/supabase/client.ts.
+The admin dashboard layout wraps all /admin/dashboard/* pages.
+
+----------------------------------------------------------------------
+ADMIN LAYOUT (src/app/admin/dashboard/layout.tsx)
+----------------------------------------------------------------------
+  - Slate-900 dark sidebar (desktop: fixed left, 256px wide)
+  - DESKTOP SIDEBAR CONTAINS:
+    Brand: GraduationCap icon + "ADHITYA NEET" + "ADMIN CMS"
+    Navigation items (sidebarItems array):
+      1. Dashboard      → /admin/dashboard       (LayoutDashboard icon)
+      2. Home Page      → /admin/dashboard/home  (FileText icon)
+      3. About Page     → /admin/dashboard/about (Landmark icon)
+      4. Courses        → /admin/dashboard/courses (BookOpen icon)
+      5. Gallery        → /admin/dashboard/gallery (Image icon)
+      6. Achievements   → /admin/dashboard/achievements (Trophy icon)
+      7. Contact Info   → /admin/dashboard/contact (PhoneCall icon)
+      8. Settings       → /admin/dashboard/settings (Settings icon)
+    Active state: bg-primary (blue #2563EB) text-white shadow
+    Footer: admin name display + Sign Out button (→ calls signOut() + redirect /login)
+
+  - MOBILE: Hamburger button (Menu icon) in top bar → opens slide-in drawer (same nav)
+    Drawer: fixed overlay with backdrop-blur, X button to close, closes on link click
+
+  - TOP HEADER BAR: h-16 white bar with:
+    Left: Hamburger (mobile only) + page title (from sidebarItems name)
+    Right: Admin name + "CMS Admin" label + initial avatar circle
+
+  - Fetches admin email/name from supabase.auth.getUser() on mount
+  - If no user_metadata.full_name, uses email prefix before "@"
+
+----------------------------------------------------------------------
+ADMIN PAGE 1: DASHBOARD OVERVIEW (src/app/admin/dashboard/page.tsx)
+----------------------------------------------------------------------
+  FEATURES:
+  - "CMS Control Desk" banner with Refresh button
+  - 3 KPI stat cards:
+    - Total Courses (count from courses table)
+    - Gallery Media (count from gallery table)
+    - Achievements (count from achievements table)
+  - Quick Actions grid (4 buttons): Homepage Hero | Publish Course | Contact CMS | Settings
+  - Recent Updates timeline (last 1 course + last 1 gallery + last 1 achievement by created_at)
+  - Refresh button re-fetches all data
+  - Data fetched via fetchCMSData() on component mount
+
+----------------------------------------------------------------------
+ADMIN PAGE 2: HOME PAGE CMS (src/app/admin/dashboard/home/page.tsx)
+----------------------------------------------------------------------
+  TABLE USED: website_home (id = 'main') — upsert operation
+  STORAGE FOLDER: academy/home/
+
+  FORM SECTIONS:
+  1. Hero Configuration:
+     - Hero Main Title input
+     - Hero Main Description textarea
+     - CTA Button Label Text input
+     - Hero Image file upload (file input → uploads to Supabase Storage)
+
+  2. Statistics (4 fixed slots):
+     - Each slot: Stat Value input + Stat Label input
+
+  3. Why Choose Us Section:
+     - Section Title input
+     - Section Description textarea
+     - 3 Highlight Items: each has Title + Description textarea
+
+  4. Success Highlights (dynamic add/remove):
+     - Add Highlight button → creates new {name, score, rank, year} group
+     - Each highlight: Student Name + NEET Score + Rank (AIR) + Year inputs
+     - Delete button (Trash icon) per highlight
+     - Saved as JSONB in success_highlights column
+
+  LIVE PREVIEW MODAL:
+  - "Live Preview" button opens modal showing:
+    - Mock hero section with current title/description/CTA/image
+    - Mock statistics grid
+  - Shows file preview (URL.createObjectURL) before actual upload
+
+  SAVE: upserts all data to website_home WHERE id = 'main'
+  On success: shows alert, refetches data, clears file input
+
+----------------------------------------------------------------------
+ADMIN PAGE 3: ABOUT PAGE CMS (src/app/admin/dashboard/about/page.tsx)
+----------------------------------------------------------------------
+  TABLE USED: website_about (id = 'main') — upsert operation
+
+  FORM FIELDS:
+  - About Main Content (story paragraph 1)
+  - Overview / Story Content (story paragraph 2)
+  - Mission Statement
+  - Vision Statement
+  - Image URL (for story section image)
+
+----------------------------------------------------------------------
+ADMIN PAGE 4: COURSES MANAGEMENT (src/app/admin/dashboard/courses/page.tsx)
+----------------------------------------------------------------------
+  TABLE USED: courses — full CRUD (INSERT, UPDATE, DELETE)
+  STORAGE FOLDER: academy/courses/
+
+  LAYOUT: 2-column (course cards left + slide-in editor panel right)
+
+  FEATURES:
+  - "Add Course" button → opens editor panel in "add" mode
+  - Course cards display: image + status badge + title + duration + description + timing
+  - Active/Inactive badge (green/gray)
+  - "Edit" button per card → opens editor panel in "edit" mode with pre-filled data
+  - "Delete" button per card → confirm dialog → deletes from DB
+  
+  EDITOR PANEL (slides in from right):
+  - Course Name input
+  - Batch Duration input (e.g. "1 Year")
+  - Class Timings input
+  - Course Description textarea
+  - Course Image file upload
+  - Visibility Status dropdown: Active | Inactive
+  - "Cancel" + "Publish Course"/"Save Changes" buttons
+
+  NOTE: highlights (bullet points) and target/days fields are NOT in admin form
+        (they exist in mockData.ts static data but admin currently only manages
+        title, description, duration, class_timing, image_url, status)
+
+----------------------------------------------------------------------
+ADMIN PAGE 5: GALLERY MANAGEMENT (src/app/admin/dashboard/gallery/page.tsx)
+----------------------------------------------------------------------
+  TABLE USED: gallery — INSERT + DELETE
+  STORAGE FOLDER: academy/gallery/
+
+  FEATURES:
+  - Upload form: file picker + caption input + category dropdown + Upload button
+  - Gallery grid showing all uploaded images
+  - Each image card: thumbnail + caption + category + Delete button
+  - Delete: removes from gallery table + (attempts to delete from storage)
+
+----------------------------------------------------------------------
+ADMIN PAGE 6: ACHIEVEMENTS MANAGEMENT (src/app/admin/dashboard/achievements/page.tsx)
+----------------------------------------------------------------------
+  TABLE USED: achievements — full CRUD
+  STORAGE FOLDER: academy/achievements/
+
+  FEATURES:
+  - Add/Edit/Delete NEET topper entries
+  - Form fields: Student Name, NEET Score, AIR Rank, Year, Photo upload
+
+----------------------------------------------------------------------
+ADMIN PAGE 7: CONTACT INFORMATION CMS (src/app/admin/dashboard/contact/page.tsx)
+----------------------------------------------------------------------
+  TABLE USED: contact_information (id = 'main') — upsert operation
+
+  FORM SECTIONS:
+  1. General Helpline Contacts:
+     - Primary Telephone Number (phone)
+     - WhatsApp Direct Number (whatsapp)
+     - Helpline Email Address (email)
+
+  2. Postal Address & Embed Locations:
+     - Campus Address (textarea)
+     - Google Maps Embed URL (the full iframe src= URL)
+     Note: must be the exact src URL from Google Maps "Share > Embed a map"
+
+  3. Social Media Profiles:
+     - Facebook Page URL
+     - Instagram Profile URL
+     - Twitter/X Profile URL
+     - YouTube Channel URL
+
+  Custom SVG icons used for Facebook, Instagram, Twitter, YouTube (inline SVGs)
+
+----------------------------------------------------------------------
+ADMIN PAGE 8: SETTINGS (src/app/admin/dashboard/settings/page.tsx)
+----------------------------------------------------------------------
+  No database writes — display only + mock save
+
+  Shows (all disabled/read-only):
+  - Academy Licensing Title: "ADHITYA NEET ACADEMY"
+  - Licensing Code: "COIMBATORE-2026-NEET-ELITE"
+  - Active Administrator Account Email: fetched from supabase.auth.getUser()
+
+  "Save Settings" button shows a success alert after 800ms (mock delay)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 12 — SHARED COMPONENTS (DETAILED)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+----------------------------------------------------------------------
+COMPONENT: FadeIn (src/components/shared/FadeIn.tsx)
+----------------------------------------------------------------------
+Type: "use client"
+Library: Framer Motion (motion.div + useInView)
+
+PURPOSE: Wraps any content and animates it into view when scrolled to.
+
+PROPS:
+  children   : ReactNode — content to animate
+  delay      : number (default 0) — delay in seconds before animation
+  direction  : "up" | "down" | "left" | "right" | "none" (default "up")
+  fullWidth  : boolean (default false)
+  duration   : number (default 0.5) — animation duration
+  className  : string — additional CSS classes
+
+ANIMATION:
+  - useInView with { once: true, margin: "-10% 0px" }
+  - Triggers once when 10% below viewport top
+  - Fades from opacity:0 to opacity:1
+  - Also translates: "up" = translateY(40px→0), "right" = translateX(-40px→0), etc.
+  - Easing: cubic-bezier(0.21, 0.47, 0.32, 0.98) — smooth premium feel
+
+USAGE PATTERN: Wrap any section or card to make it animate on scroll.
+  <FadeIn delay={0.1} direction="right">
+    <div>content</div>
+  </FadeIn>
+
+----------------------------------------------------------------------
+COMPONENT: TestimonialsSlider (src/components/shared/TestimonialsSlider.tsx)
+----------------------------------------------------------------------
+Type: "use client"
+
+PURPOSE: Horizontal scrolling carousel for testimonials with prev/next buttons
+         and dot pagination.
+
+PROPS:
+  testimonials: Array of { name, role, content, rating }
+
+RESPONSIVE BEHAVIOR:
+  - < 768px (mobile):  shows 1 card at a time
+  - 768–1024px (tablet): shows 2 cards at a time
+  - > 1024px (desktop): shows 3 cards at a time
+  - Uses window.addEventListener("resize") to update visibleCount
+
+NAVIGATION:
+  - Left/Right chevron buttons (ChevronLeft/ChevronRight from lucide-react)
+  - Positioned top-right of the slider
+  - Hover: bg turns navy, text turns white
+  - Next wraps to 0 when at end; Prev wraps to max when at start
+
+SLIDE MECHANISM:
+  - Uses translate3d CSS transform
+  - translateValue = calc(-{currentIndex} * (100% + {gap}px) / {visibleCount})
+  - Each slide width = calc((100% - {(visibleCount-1) * 24}px) / {visibleCount})
+  - gap = 24px (gap-6)
+  - Smooth transition: duration-500 ease-out
+
+PAGINATION DOTS:
+  - Number of dots = testimonials.length - visibleCount + 1
+  - Active dot: wider (w-6), gold bg
+  - Inactive: small (w-2), slate-200 bg
+  - Click dot → jumps to that index
+
+CARD DESIGN:
+  - White bg, rounded-3xl, min-h-280px
+  - Stars row (filled gold) at top
+  - Italic quote text in body
+  - Footer: name (serif bold) + role (tiny uppercase)
+  - Hover: shadow-xl + gold border on top
+
+DATA: 12 testimonials from mockData.ts:
+  Keshav, Thia Shri, Sanjana Devulapalli, Sowmya Sri, Pradeep Abul, Geoprin,
+  Dhanya Sri, Blisston Alex, Abijith M, Kasthurisree, Thiyashini Natarajan, Dhanu
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 13 — STATIC DATA FILES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+----------------------------------------------------------------------
+FILE: src/data/mockData.ts
+----------------------------------------------------------------------
+Exports:
+  academyStats: Array[4] — Homepage stats strip
+    { label: "NEET SUCCESS RATE", value: "99.2%", delay: 0.1 }
+    { label: "NEET SCORE AVERAGE", value: "655+", delay: 0.2 }
+    { label: "YEARS OF ACADEMIC LEADERSHIP", value: "15+", delay: 0.3 }
+    { label: "MEDICAL COLLEGE ADMISSIONS", value: "1,250+", delay: 0.4 }
+
+  features: Array[4] — "Why Choose Us" section cards
+    { title: "Elite Faculty Panel", icon: "GraduationCap", description: "..." }
+    { title: "Rigorous Core Curriculum", icon: "BookOpen", description: "..." }
+    { title: "Daily Advanced Assessments", icon: "PenTool", description: "..." }
+    { title: "Personal Mentorship Desk", icon: "Users", description: "..." }
+
+  topRanks: Array[4] — Fallback NEET toppers
+    { name, rank, score, year, image } — all using Unsplash avatar URLs
+
+  courses: Array[4] — Fallback course data
+    Each: { id, title, duration, target, days, classTiming, description, highlights[] }
+    1. NEET Repeaters (1 Year, 9:30 AM–5:00 PM)
+    2. NEET Weekend Batch (Academic Year, Thu/Fri/Sat, 6:30–8:30 PM)
+    3. Test Batch (Evaluation Program, Thu/Fri/Sat, 6:30–8:30 PM)
+    4. Crash Course (Intensive Capsule, Thu/Fri/Sat, 6:30–8:30 PM)
+
+  testimonials: Array[12] — All student testimonials
+    Each: { name, role, content, rating: 5 }
+    All 12 students listed above, all rating = 5
+
+  coreValues: Array[4] — About page core values section
+    { title: "Academic Rigour", desc: "..." }
+    { title: "Empathetic Mentoring", desc: "..." }
+    { title: "Data-Driven Pedagogy", desc: "..." }
+    { title: "Absolute Partnership", desc: "..." }
+
+----------------------------------------------------------------------
+FILE: src/data/cmsContent.ts
+----------------------------------------------------------------------
+This is the DEFAULT text content for every page. When Supabase has no data,
+these values are used as fallbacks.
+
+Structure: cmsContent.{page}.{section}.{field}
+
+Global:
+  academyName   : "ADHITYA NEET ACADEMY"
+  phonePrimary  : "9600607680"
+  emailPrimary  : "adhityaneetacademy@gmail.com"
+  address       : "Royal Theatre, 24/8, near Nalli Hospital Road, opposite
+                   Main Road, Municipal Colony, Annamalai Layout, Erode,
+                   Tamil Nadu 638011"
+  mapEmbed      : Google Maps embed URL (pointing to Coimbatore as placeholder)
+  socialLinks   : facebook, instagram, twitter, youtube URLs
+  footerDescription: Academy tagline for footer
+
+Home:
+  hero.titlePrefix         : "PROVEN PATHWAY TO ACADEMIC EXCELLENCE"
+  hero.titleHighlight      : "Start Your NEET Success Journey Today"
+  hero.description         : Welcome paragraph
+  hero.image               : Unsplash medical photo URL
+  hero.studentImageLabel   : "Successful alumni currently studying..."
+  hero.successRateLabel    : "99.2% NEET Success Rate"
+  whyChooseUs.title        : "Our Standard of Educational Excellence"
+  whyChooseUs.description  : Description paragraph
+  topAchievers.title       : "Top Achievers Portfolio"
+  topAchievers.description : Description
+  courses.title            : "Elite Curricular Batches"
+  courses.description      : Description
+  testimonials.title       : "Voices of Success"
+  testimonials.description : Description
+  cta.title                : "Ready to Begin Your Medical Career Journey?"
+  cta.description          : Admissions description
+
+About:
+  hero.title, hero.description
+  story.title, story.content1, story.content2, story.image, story.imageLabel
+  story.stat1Value ("655+"), story.stat1Label, story.stat2Value ("15+ Years"), story.stat2Label
+  mission.title, mission.content
+  vision.title, vision.content
+  coreValues.title: "Our Educational Guidelines"
+
+Courses Page:
+  hero.title, hero.description
+
+Achievements Page:
+  hero.title, hero.description
+  trend.title, trend.description
+  stats[4]: AIR Top 100 | 99th Percentile | State Ranks | Medical Seats
+  performers.title: "Verified National Toppers"
+
+Gallery Page:
+  hero.title: "Campus Life & Facilities"
+  hero.description
+
+Contact Page:
+  hero.title, hero.description
+  form.title: "Admissions Inquiry"
+  form.description
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 14 — MIDDLEWARE & ROUTE PROTECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FILE: src/middleware.ts (Next.js middleware entry)
+  - Applies to all routes EXCEPT: _next/static, _next/image, favicon.ico, image files
+  - Simply calls: updateSession(request) from lib/supabase/middleware
+
+FILE: src/lib/supabase/middleware.ts (session manager)
+  LOGIC:
+  1. Creates a server Supabase client with cookie management
+  2. Calls supabase.auth.getUser() to verify session
+  3. If URL starts with /admin/dashboard:
+     - No user → redirect to /login
+     - User exists but user_metadata.role !== "admin" → redirect to /login
+  4. If URL === /login AND user exists AND role === "admin":
+     - Redirect to /admin/dashboard (prevent admin from seeing login page)
+  5. Returns supabaseResponse (with refreshed cookies)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 15 — KNOWN ISSUES & NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. HYDRATION WARNING (non-critical):
+   React hydration mismatch warnings appear in browser console for the login
+   page and some client components. This is caused by:
+   - window checks in client components that differ between SSR and client
+   - The FadeIn component uses useInView which is client-only
+   Root cause: Next.js App Router hydrates server HTML with client state.
+   This does NOT break functionality — it's a console warning only.
+
+2. CONTACT FORM: The contact form on /contact is UI-only — the "Send Message"
+   button does not currently submit data anywhere. To enable:
+   - Create a Supabase table "contact_submissions"
+   - Add a server action or API route to handle form POST
+
+3. COURSES ADMIN: The courses table has columns "target", "days", and "highlights"
+   that the admin form does NOT expose (only title, description, duration,
+   class_timing, image_url, status are editable from admin). The highlights
+   column must be updated directly in Supabase or by extending the admin form.
+
+4. GALLERY CATEGORIES: The gallery page filter shows "All, Campus, Events,
+   Felicitation, Classrooms" but the admin upload form should set the "category"
+   column. Ensure admin gallery page includes category selection on upload.
+
+5. MAP EMBED: The mapEmbed in cmsContent.ts points to Coimbatore Race Course
+   as a placeholder. The real address is in Erode. The admin must update
+   this via Admin > Contact Information with the correct Erode embed URL.
+
+6. SETTINGS PAGE: The settings page does not actually save anything to DB.
+   It's a UI-only mockup with a fake setTimeout success alert.
+
+7. SOCIAL LINKS: Social links in Footer only render if the URL is not empty/falsy.
+   If all social links are empty strings in cmsContent, no social icons show.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 16 — SUPABASE SETUP CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+To set up Supabase from scratch for this project:
+
+1. Create a new Supabase project
+2. Copy Project URL and Anon Key → paste into .env.local
+
+3. Create tables (run this SQL in Supabase SQL Editor):
+
+---SQL START---
+-- contact_information
+CREATE TABLE IF NOT EXISTS contact_information (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  phone TEXT,
+  email TEXT,
+  whatsapp TEXT,
+  address TEXT,
+  map_embed TEXT,
+  facebook TEXT,
+  instagram TEXT,
+  twitter TEXT,
+  youtube TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- website_home
+CREATE TABLE IF NOT EXISTS website_home (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  hero_title TEXT,
+  hero_description TEXT,
+  hero_image TEXT,
+  cta_text TEXT,
+  stats JSONB,
+  why_choose_us_title TEXT,
+  why_choose_us_description TEXT,
+  why_choose_us_items JSONB,
+  success_highlights JSONB,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- website_about
+CREATE TABLE IF NOT EXISTS website_about (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  about_content TEXT,
+  overview TEXT,
+  mission TEXT,
+  vision TEXT,
+  images JSONB,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- courses
+CREATE TABLE IF NOT EXISTS courses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT,
+  duration TEXT,
+  target TEXT,
+  days TEXT,
+  class_timing TEXT,
+  highlights JSONB,
+  image_url TEXT,
+  status TEXT DEFAULT 'Active',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- gallery
+CREATE TABLE IF NOT EXISTS gallery (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  image_url TEXT NOT NULL,
+  caption TEXT,
+  category TEXT DEFAULT 'Campus',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- achievements
+CREATE TABLE IF NOT EXISTS achievements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  rank TEXT,
+  score TEXT,
+  year TEXT,
+  image_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- user_roles (optional auth fallback)
+CREATE TABLE IF NOT EXISTS user_roles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id),
+  role TEXT DEFAULT 'user'
+);
+
+-- website_content (generic fallback)
+CREATE TABLE IF NOT EXISTS website_content (
+  key TEXT PRIMARY KEY,
+  content JSONB
+);
+---SQL END---
+
+4. Create Supabase Storage bucket: "academy" (set to PUBLIC)
+
+5. Create admin user:
+   - Supabase Dashboard > Auth > Users > Add User
+   - Set email + password
+   - Edit user > Raw user meta data > add: {"role": "admin"}
+
+6. Insert initial contact_information row:
+   INSERT INTO contact_information (id, phone, email, whatsapp, address, map_embed)
+   VALUES ('main', '9600607680', 'adhityaneetacademy@gmail.com', '9600607680',
+   'Royal Theatre, 24/8, near Nalli Hospital Road, opposite Main Road, Municipal Colony,
+   Annamalai Layout, Erode, Tamil Nadu 638011',
+   'YOUR_GOOGLE_MAPS_EMBED_URL');
+
+7. Enable RLS on all tables and create appropriate policies:
+   - For read access (anon): allow SELECT on all tables
+   - For write access: allow INSERT/UPDATE/DELETE for authenticated users with admin role
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 17 — ADMIN NAVIGATION REFERENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+URL                               → Admin Page
+─────────────────────────────────────────────────────
+/login                            Login Portal
+/admin/dashboard                  Overview (KPI + Quick Actions)
+/admin/dashboard/home             Homepage CMS (Hero + Stats + Why Us + Highlights)
+/admin/dashboard/about            About Page CMS (Story + Mission + Vision)
+/admin/dashboard/courses          Courses CRUD (Add/Edit/Delete batches)
+/admin/dashboard/gallery          Gallery CRUD (Upload/Delete photos)
+/admin/dashboard/achievements     Achievements CRUD (Add/Edit/Delete toppers)
+/admin/dashboard/contact          Contact Info CMS (Phone/Email/Address/Social)
+/admin/dashboard/settings         Settings (Read-only info)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 18 — PUBLIC ROUTES REFERENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/           → Home page (7 sections)
+/about      → About Us page
+/courses    → Courses listing
+/achievements → NEET toppers + stats
+/gallery    → Photo gallery with lightbox
+/contact    → Contact form + map + info
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 19 — IMPORTANT CODE PATTERNS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PATTERN 1: Supabase upsert for single-row tables
+  supabase.from("website_home").upsert({ id: "main", ...fields, updated_at: new Date().toISOString() })
+  Always use id: "main" for website_home, website_about, contact_information.
+
+PATTERN 2: File upload to Supabase Storage
+  const fileName = `{folder}/{Date.now()}_{sanitized_name}`
+  supabase.storage.from("academy").upload(fileName, file, { cacheControl: "3600", upsert: true })
+  supabase.storage.from("academy").getPublicUrl(fileName).data.publicUrl
+
+PATTERN 3: Server component data fetch pattern
+  const supabase = await createClient()  // from lib/supabase/server.ts
+  const data = await getGlobalSettings(supabase)
+  Pass supabase client to all cms-loader functions.
+
+PATTERN 4: Client component data fetch pattern
+  const supabase = createClient()  // from lib/supabase/client.ts (no await)
+  useEffect(() => { fetchData() }, [])
+
+PATTERN 5: Gold gradient text on specific keywords
+  const highlightWords = ["neet", "success", "journey", "academy", "excellence", ...]
+  word.split(" ").map(w => highlightWords.includes(w.toLowerCase()) ?
+    <span className="bg-gradient-to-r from-accent via-[#FDF0A6] to-[#D4AF37] bg-clip-text text-transparent italic font-bold">{w}</span>
+  : w + " ")
+
+PATTERN 6: Ambient glow background decorations
+  <div className="absolute top-[20%] left-[10%] w-[350px] h-[350px] bg-accent/5 rounded-full blur-[120px] pointer-events-none z-0" />
+  Always: rounded-full blur-[large] pointer-events-none z-0
+
+PATTERN 7: Glassmorphic overlay card
+  <div className="... bg-[#0B132B]/75 backdrop-blur-md border border-white/10 ...">
+
+PATTERN 8: Card hover gold top border
+  className="... border-t-2 border-t-transparent hover:border-t-accent transition-all duration-500"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 20 — ACADEMY CONTACT INFORMATION (REAL DATA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Academy Name  : ADHITYA NEET ACADEMY
+Phone         : 9600607680
+WhatsApp      : 9600607680 (same number)
+Email         : adhityaneetacademy@gmail.com
+Address       : Royal Theatre, 24/8, near Nalli Hospital Road,
+                opposite Main Road, Municipal Colony, Annamalai Layout,
+                Erode, Tamil Nadu 638011
+City          : Erode, Tamil Nadu
+
+SOCIAL MEDIA (placeholder URLs — update with real URLs):
+  Facebook  : https://facebook.com/adhityaneet
+  Instagram : https://instagram.com/adhityaneet
+  Twitter   : https://twitter.com/adhityaneet
+  YouTube   : https://youtube.com/c/adhityaneet
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+END OF DOCUMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
