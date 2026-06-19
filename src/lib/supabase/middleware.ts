@@ -6,6 +6,16 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
+  const url = request.nextUrl.clone()
+
+  // Only run session and user checks for admin panel and login routes
+  const isAdminRoute = url.pathname.startsWith('/admin/dashboard')
+  const isLoginRoute = url.pathname === '/login'
+
+  if (!isAdminRoute && !isLoginRoute) {
+    return supabaseResponse
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -39,10 +49,8 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const url = request.nextUrl.clone()
-
   // Guard routes starting with /admin/dashboard
-  if (url.pathname.startsWith('/admin/dashboard')) {
+  if (isAdminRoute) {
     if (!user) {
       url.pathname = '/login'
       return NextResponse.redirect(url)
@@ -57,7 +65,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect authenticated users away from /login
-  if (url.pathname === '/login' && user) {
+  if (isLoginRoute && user) {
     const role = user.user_metadata?.role
     if (role === 'admin') {
       url.pathname = '/admin/dashboard'
