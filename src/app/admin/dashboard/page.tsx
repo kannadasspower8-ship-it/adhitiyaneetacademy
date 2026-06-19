@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -14,7 +14,6 @@ import {
   FileText,
   PhoneCall,
   Settings,
-  ArrowRight,
   Sparkles
 } from "lucide-react"
 
@@ -32,7 +31,7 @@ interface RecentActivity {
 }
 
 export default function AdminDashboardOverviewPage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<DashboardStats>({
     totalCourses: 0,
@@ -41,7 +40,7 @@ export default function AdminDashboardOverviewPage() {
   })
   const [activities, setActivities] = useState<RecentActivity[]>([])
 
-  const fetchCMSData = async () => {
+  const fetchCMSData = useCallback(async () => {
     setLoading(true)
     try {
       // 1. Total Courses
@@ -128,11 +127,11 @@ export default function AdminDashboardOverviewPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase])
 
   useEffect(() => {
     fetchCMSData()
-  }, [])
+  }, [fetchCMSData])
 
   return (
     <div className="space-y-8 animate-fadeIn text-sm">
@@ -259,11 +258,11 @@ export default function AdminDashboardOverviewPage() {
               asChild
               className="h-14 bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 flex items-center justify-start gap-4 px-6 rounded-xl text-left"
             >
-              <Link href="/admin/dashboard/settings">
-                <Settings className="w-5 h-5 shrink-0 text-indigo-500" />
+              <Link href="/admin/dashboard/gallery">
+                <ImageIcon className="w-5 h-5 shrink-0 text-indigo-500" />
                 <div>
-                  <div className="font-semibold text-xs text-slate-800">Academy Parameters</div>
-                  <div className="text-[10px] text-slate-400 font-medium font-semibold">General configurations</div>
+                  <div className="font-semibold text-xs text-slate-800">Gallery CMS</div>
+                  <div className="text-[10px] text-slate-400 font-medium font-semibold">Manage campus photographs</div>
                 </div>
               </Link>
             </Button>
