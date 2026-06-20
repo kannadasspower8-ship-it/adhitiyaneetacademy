@@ -28,7 +28,6 @@ interface SidebarItem {
 const sidebarItems: SidebarItem[] = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Home Page", href: "/admin/dashboard/home", icon: FileText },
-  { name: "About Page", href: "/admin/dashboard/about", icon: Landmark },
   { name: "Courses", href: "/admin/dashboard/courses", icon: BookOpen },
   { name: "Gallery", href: "/admin/dashboard/gallery", icon: ImageIcon },
   { name: "Achievements", href: "/admin/dashboard/achievements", icon: Trophy },

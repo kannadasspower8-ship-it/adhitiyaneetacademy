@@ -185,15 +185,15 @@ export default function HomepageCMSPage() {
                 <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl"></div>
                 <div className="flex-1 space-y-4">
                   <span className="text-[10px] tracking-widest font-extrabold text-accent uppercase bg-accent/10 border border-accent/20 px-3 py-1 rounded-full">
-                    PROVEN PATHWAY TO ACADEMIC EXCELLENCE
+                    Guiding Future Medical Professionals
                   </span>
-                  <h1 className="text-2xl md:text-3xl font-extrabold leading-tight">{heroTitle || "Title goes here"}</h1>
+                  <h1 className="text-2xl md:text-3xl font-extrabold leading-tight">Where Future Doctors Begin Their Journey</h1>
                   <p className="text-xs text-slate-300 leading-relaxed max-w-lg">{heroDescription || "Description text goes here"}</p>
-                  <Button className="bg-accent hover:bg-accent/95 text-slate-950 font-bold px-6 py-2.5 rounded-xl h-12">
-                    {ctaText || "Apply Now"}
+                  <Button className="bg-[#0B132B] hover:bg-[#1a2744] text-white font-bold px-6 py-2.5 rounded-xl h-12">
+                    Apply for Admission
                   </Button>
                 </div>
-                <div className="w-full md:w-80 h-52 rounded-xl overflow-hidden border border-slate-700 bg-slate-800 shrink-0">
+                <div className="w-full md:w-80 h-52 rounded-xl overflow-hidden border border-slate-700 bg-slate-800 shrink-0 relative">
                   {file ? (
                     <Image src={URL.createObjectURL(file)} alt="Preview" fill unoptimized className="object-cover" />
                   ) : heroImageUrl ? (
@@ -202,16 +202,6 @@ export default function HomepageCMSPage() {
                     <div className="w-full h-full flex items-center justify-center text-slate-550">No Image</div>
                   )}
                 </div>
-              </div>
-
-              {/* Stats Mockups */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                {stats.map((st, i) => (
-                  <Card key={i} className="border-slate-200 text-center bg-white shadow-sm p-4">
-                    <h4 className="text-2xl font-extrabold text-slate-800">{st.value || "0"}</h4>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">{st.label || "Statistic Label"}</p>
-                  </Card>
-                ))}
               </div>
             </div>
           </div>
@@ -223,7 +213,7 @@ export default function HomepageCMSPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Homepage CMS Panel</h1>
-            <p className="text-slate-500 text-xs">Modify Hero layout highlights, credentials, statistics, and toppers.</p>
+            <p className="text-slate-500 text-xs">Modify Hero description, Hero image, and Why Choose Us section text.</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0">
             <Button
@@ -251,20 +241,10 @@ export default function HomepageCMSPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-slate-800 text-base font-bold flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary" />
-              Hero Section & Call-to-Actions
+              Hero Section Configuration
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-slate-700 font-semibold">Hero Main Title (Highlight Title)</Label>
-              <Input
-                value={heroTitle}
-                onChange={(e) => setHeroTitle(e.target.value)}
-                required
-                className="rounded-xl border-slate-250 text-slate-800 h-12 px-4 focus-visible:ring-primary text-sm"
-              />
-            </div>
-            
             <div className="space-y-2">
               <Label className="text-slate-700 font-semibold">Hero Main Description</Label>
               <textarea
@@ -275,66 +255,22 @@ export default function HomepageCMSPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-slate-700 font-semibold">CTA Button Label Text</Label>
-                <Input
-                  value={ctaText}
-                  onChange={(e) => setCtaText(e.target.value)}
-                  required
-                  className="rounded-xl border-slate-250 text-slate-800 h-12 px-4 focus-visible:ring-primary text-sm"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-slate-700 font-semibold">Hero Photograph Image</Label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  className="rounded-xl border-slate-250 text-slate-800 h-12 file:text-xs text-sm"
-                />
-                {heroImageUrl && !file && (
-                  <p className="text-[10px] text-emerald-600 font-bold">✓ Active homepage hero photo loaded</p>
-                )}
-              </div>
+            <div className="space-y-2">
+              <Label className="text-slate-700 font-semibold">Hero Photograph Image</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                className="rounded-xl border-slate-250 text-slate-800 h-12 file:text-xs text-sm"
+              />
+              {heroImageUrl && !file && (
+                <p className="text-[10px] text-emerald-600 font-bold">✓ Active homepage hero photo loaded</p>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* 2. Statistics Configuration */}
-        <Card className="border-slate-200 bg-white">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-slate-800 text-base font-bold">Homepage Statistics (4 items)</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {stats.map((st, i) => (
-              <div key={i} className="border border-slate-200 p-4 rounded-xl bg-slate-50/50 space-y-3">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Stat Slot #{i + 1}</span>
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-slate-550 font-semibold">Stat Value (e.g. 15+, 99.2%)</Label>
-                  <Input
-                    value={st.value}
-                    onChange={(e) => handleStatChange(i, "value", e.target.value)}
-                    required
-                    className="rounded-xl border-slate-250 text-slate-800 h-12 px-4 focus-visible:ring-primary text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-slate-550 font-semibold">Stat Label Description</Label>
-                  <Input
-                    value={st.label}
-                    onChange={(e) => handleStatChange(i, "label", e.target.value)}
-                    required
-                    className="rounded-xl border-slate-250 text-slate-800 h-12 px-4 focus-visible:ring-primary text-sm"
-                  />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* 3. Why Choose Us */}
+        {/* 2. Why Choose Us */}
         <Card className="border-slate-200 bg-white">
           <CardHeader className="pb-3">
             <CardTitle className="text-slate-800 text-base font-bold">"Why Choose Us" Core Section</CardTitle>
@@ -360,111 +296,6 @@ export default function HomepageCMSPage() {
                 />
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-100 pt-4 mt-2">
-              {whyItems.map((item, idx) => (
-                <div key={idx} className="border border-slate-200 p-4 rounded-xl bg-slate-50/20 space-y-3">
-                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Highlight Item #{idx + 1}</span>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-slate-550 font-semibold">Item Title</Label>
-                    <Input
-                      value={item.title}
-                      onChange={(e) => handleWhyChange(idx, "title", e.target.value)}
-                      required
-                      className="rounded-xl border-slate-250 text-slate-800 h-12 px-4 focus-visible:ring-primary text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-slate-550 font-semibold">Item Description</Label>
-                    <textarea
-                      value={item.description}
-                      onChange={(e) => handleWhyChange(idx, "description", e.target.value)}
-                      required
-                      className="w-full min-h-[120px] border border-slate-250 rounded-xl p-3 text-slate-800 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none text-xs"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 4. Success Highlights */}
-        <Card className="border-slate-200 bg-white">
-          <CardHeader className="pb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div>
-              <CardTitle className="text-slate-800 text-base font-bold">Homepage Success Highlights</CardTitle>
-              <CardDescription className="text-xs">Manage topper highlights displayed on the home page dashboard carousel.</CardDescription>
-            </div>
-            <Button
-              type="button"
-              onClick={addHighlight}
-              className="bg-primary hover:bg-primary/95 text-white flex items-center gap-1.5 font-bold h-12 rounded-xl text-xs px-4 w-full sm:w-auto shrink-0 justify-center"
-            >
-              <Plus className="w-4 h-4" />
-              Add Highlight
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {highlights.length === 0 ? (
-              <div className="text-center py-6 text-slate-400 text-xs font-semibold">No success highlights configured. Click add above.</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {highlights.map((hl, idx) => (
-                  <div key={idx} className="border border-slate-200 p-5 rounded-2xl bg-slate-50/50 relative space-y-4 pt-10">
-                    <button
-                      type="button"
-                      onClick={() => removeHighlight(idx)}
-                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors border border-slate-200 hover:border-red-100 bg-white shadow-sm"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <span className="text-[10px] font-bold text-slate-450 block uppercase absolute top-4 left-5">Topper Highlight #{idx + 1}</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <Label className="text-[11px] text-slate-550 font-semibold">Student Name</Label>
-                        <Input
-                          value={hl.name}
-                          onChange={(e) => handleHighlightChange(idx, "name", e.target.value)}
-                          required
-                          className="rounded-xl border-slate-250 text-slate-800 h-12 px-4 focus-visible:ring-primary text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[11px] text-slate-550 font-semibold">NEET Score</Label>
-                        <Input
-                          placeholder="e.g. 715 / 720"
-                          value={hl.score}
-                          onChange={(e) => handleHighlightChange(idx, "score", e.target.value)}
-                          required
-                          className="rounded-xl border-slate-250 text-slate-800 h-12 px-4 focus-visible:ring-primary text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[11px] text-slate-550 font-semibold">Rank (AIR)</Label>
-                        <Input
-                          placeholder="e.g. AIR 12"
-                          value={hl.rank}
-                          onChange={(e) => handleHighlightChange(idx, "rank", e.target.value)}
-                          required
-                          className="rounded-xl border-slate-250 text-slate-800 h-12 px-4 focus-visible:ring-primary text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[11px] text-slate-550 font-semibold">Year</Label>
-                        <Input
-                          placeholder="e.g. 2025"
-                          value={hl.year}
-                          onChange={(e) => handleHighlightChange(idx, "year", e.target.value)}
-                          required
-                          className="rounded-xl border-slate-250 text-slate-800 h-12 px-4 focus-visible:ring-primary text-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </CardContent>
         </Card>
       </form>
