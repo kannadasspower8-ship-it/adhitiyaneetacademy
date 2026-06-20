@@ -1,0 +1,274 @@
+================================================================================
+          ADHITYA NEET ACADEMY — SUPABASE DATABASE & WORKFLOW GUIDE
+================================================================================
+
+This document provides a comprehensive overview of the Supabase integration,
+database schemas, storage buckets, authentication guards, and data workflows
+powering the Adhitya NEET Academy website.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. PROJECT SPECIFICATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Supabase Project URL : https://tjfrxpgknazixwkyyzfm.supabase.co
+- Project Reference ID : tjfrxpgknazixwkyyzfm
+- Database Name        : formidfill-db
+- Storage Bucket       : academy (Public)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. DATABASE SCHEMAS & SQL DDL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Below are the SQL DDL statements defining the tables in the 'public' schema:
+
+-- A. CMS Content Tables (Single-Row Configuration where id = 'main')
+--------------------------------------------------------------------------------
+
+-- contact_information: Academy helplines, location, maps, and social profiles
+CREATE TABLE IF NOT EXISTS contact_information (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  phone TEXT,
+  email TEXT,
+  whatsapp TEXT,
+  address TEXT,
+  map_embed TEXT,
+  facebook TEXT,
+  instagram TEXT,
+  twitter TEXT,
+  youtube TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- website_home: Homepage CMS configurations
+CREATE TABLE IF NOT EXISTS website_home (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  hero_title TEXT,
+  hero_description TEXT,
+  hero_image TEXT,
+  cta_text TEXT,
+  stats JSONB,                  -- Array of {label, value} stats
+  why_choose_us_title TEXT,
+  why_choose_us_description TEXT,
+  why_choose_us_items JSONB,    -- Array of {title, description, icon}
+  success_highlights JSONB,     -- Array of toppers' records
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- website_about: About Page story, mission, and vision blocks
+CREATE TABLE IF NOT EXISTS website_about (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  about_content TEXT,
+  overview TEXT,
+  mission TEXT,
+  vision TEXT,
+  images JSONB,                 -- Array of image URLs
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- B. CMS Ledger Tables (Multiple-Row CRUD Tables)
+--------------------------------------------------------------------------------
+
+-- courses: Catalog of repeater/crash programs and brochure links
+CREATE TABLE IF NOT EXISTS courses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT,
+  duration TEXT,
+  target TEXT,
+  days TEXT,
+  class_timing TEXT,
+  highlights JSONB,
+  image_url TEXT,
+  status TEXT DEFAULT 'Active', -- 'Active' (Visible) or 'Inactive' (Hidden)
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- gallery: Media assets shown in the public landing page grid
+CREATE TABLE IF NOT EXISTS gallery (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  image_url TEXT NOT NULL,
+  caption TEXT,
+  category TEXT DEFAULT 'Campus',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- achievements: NEET toppers' list and scores
+CREATE TABLE IF NOT EXISTS achievements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  rank TEXT,
+  score TEXT,
+  year TEXT,
+  image_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- C. User Authentication & Authorization Tables
+--------------------------------------------------------------------------------
+
+-- user_roles: Defines user authorization roles (e.g. 'admin')
+CREATE TABLE IF NOT EXISTS user_roles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT DEFAULT 'user'      -- Role can be 'admin' or 'user'
+);
+
+-- admins: Maps admin IDs to user emails
+CREATE TABLE IF NOT EXISTS admins (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL
+);
+
+-- D. Student Trackers & monthly Excel compilation tables
+--------------------------------------------------------------------------------
+
+-- student_ids: List of pre-authorized student IDs
+CREATE TABLE IF NOT EXISTS student_ids (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- students: Student master list
+CREATE TABLE IF NOT EXISTS students (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  email TEXT
+);
+
+-- tests: Academic test schedules and descriptions
+CREATE TABLE IF NOT EXISTS tests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  date DATE NOT NULL,
+  type TEXT
+);
+
+-- student_marks: Detailed results database for student performance
+CREATE TABLE IF NOT EXISTS student_marks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID REFERENCES students(id) ON DELETE CASCADE,
+  test_id UUID REFERENCES tests(id) ON DELETE CASCADE,
+  physics NUMERIC DEFAULT 0,
+  chemistry NUMERIC DEFAULT 0,
+  biology NUMERIC DEFAULT 0,
+  total NUMERIC DEFAULT 0,      -- Cumulative score out of 720
+  percentage NUMERIC DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- E. Miscellaneous & Generic Fallbacks
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS website_content (
+  key TEXT PRIMARY KEY,
+  content JSONB
+);
+
+CREATE TABLE IF NOT EXISTS contact_details (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  phone TEXT,
+  email TEXT,
+  address TEXT
+);
+
+CREATE TABLE IF NOT EXISTS contact_settings (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  phone TEXT,
+  email TEXT,
+  address TEXT
+);
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. SUPABASE STORAGE BUCKETS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+All website assets, photographs, brochures, and media files are stored in a 
+PUBLIC storage bucket named "academy".
+
+Folder Structure inside 'academy' bucket:
+- `home/`         : Hero carousel and promotional banners.
+- `courses/`      : Promotional graphics and brochures for specific coaching batches.
+- `gallery/`      : Campus layouts, merit awards, and classroom photos.
+- `achievements/` : Merit student topper profile pictures.
+
+Asset Upload Flow:
+1. Admin selects a file on the client computer.
+2. File name is sanitized and prefixed with folder name and timestamp:
+   `const fileName = `${folder}/${Date.now()}_${sanitized_name}``
+3. Client component uploads file directly via the browser Supabase client SDK:
+   `await supabase.storage.from("academy").upload(fileName, file)`
+4. Client retrieves the public URL to save inside the corresponding table column:
+   `const publicUrl = supabase.storage.from("academy").getPublicUrl(fileName).data.publicUrl`
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. AUTHENTICATION & ACCESS WORKFLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
++-----------------------+      Checks Route     +-----------------------------+
+|    User requests      | --------------------> |    Next.js Middleware       |
+|    /admin/dashboard   |                       |    (src/middleware.ts)      |
++-----------------------+                       +-----------------------------+
+                                                               |
+                                                  Auth Token   |
+                                                  Present?     |
+                                                               v
+                                                      /---------\
+                                                     /   YES?    \
+                                                     \           /
+                                                      \---------/
+                                                       |       |
+                                                   NO  |       |  YES
+                                                       v       v
+                                                +-----------+ +---------------+
+                                                | Redirect  | | Read Profile  |
+                                                | to /login | |   User Role   |
+                                                +-----------+ +---------------+
+                                                                       |
+                                                                       v
+                                                                  /---------\
+                                                                 /  Is Role  \
+                                                                 \ 'admin'?  /
+                                                                  \---------/
+                                                                   |       |
+                                                               NO  |       |  YES
+                                                                   v       v
+                                                            +----------+ +-----------+
+                                                            | Access   | | Grant     |
+                                                            | Denied   | | Dashboard |
+                                                            +----------+ +-----------+
+
+Details:
+1. User role mappings are created by linking their Supabase Auth User ID (UUID)
+   to `'admin'` inside the `user_roles` database table.
+2. Next.js Middleware checks the current session on every request targeting `/admin/*`.
+3. If no session is found, they are redirected to `/login`.
+4. If a session is found, the server matches the user ID against `user_roles`. 
+   Only users with `role = 'admin'` can bypass the security check.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. CMS PERFORMANCE ENHANCEMENTS WORKFLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+To ensure the admin panel loads instantly and updates fast, a Stale-While-Revalidate
+(SWR) caching mechanism is configured:
+
+A. Instant Load (SWR Cache Flow):
+   1. On component mount, the page checks for cached data in local storage:
+      `localStorage.getItem("adhitya-neet-<section>-cms")`
+   2. If a cache exists, it is loaded immediately into the React state and the 
+      full-screen loading spinner is bypassed. The UI is instantly interactive.
+   3. A silent background query is concurrently sent to Supabase to fetch live data.
+   4. If updates are found, state is updated silently and written back to cache.
+   5. A subtle "Syncing" badge pulses in the header to indicate background updates.
+
+B. real-time Optimistic Mutations Flow:
+   1. When an admin creates, updates, or deletes an item:
+      - The local React state is mutated immediately.
+      - The new list/row is written to the LocalStorage cache.
+      - The UI renders the updated state instantly with zero lag.
+   2. The Supabase insert/update/delete request executes in the background.
+   3. A floating glassmorphic Toast notification informs the admin of completion:
+      - Starts as a dark loading toast (`toast.loading()`).
+      - Updates in place to success (`toast.success()`) or error (`toast.error()`).
+   4. If the background query fails:
+      - The state is rolled back to the original database snapshot.
+      - An error toast notifies the user of the network issue.
+      - Cache is rewritten with the original snapshot.
