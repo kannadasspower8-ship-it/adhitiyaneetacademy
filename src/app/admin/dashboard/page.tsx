@@ -13,7 +13,6 @@ import {
   PlusCircle,
   FileText,
   PhoneCall,
-  Settings,
   Sparkles
 } from "lucide-react"
 
