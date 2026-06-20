@@ -20,7 +20,9 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Loader2
+  Loader2,
+  Users,
+  ClipboardList
 } from "lucide-react"
 
 interface SidebarItem {
@@ -31,6 +33,8 @@ interface SidebarItem {
 
 const sidebarItems: SidebarItem[] = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+  { name: "Students Profiles", href: "/admin/dashboard/students", icon: Users },
+  { name: "Marks Registry", href: "/admin/dashboard/marks", icon: ClipboardList },
   { name: "Home Page", href: "/admin/dashboard/home", icon: FileText },
   { name: "Courses", href: "/admin/dashboard/courses", icon: BookOpen },
   { name: "Gallery", href: "/admin/dashboard/gallery", icon: ImageIcon },

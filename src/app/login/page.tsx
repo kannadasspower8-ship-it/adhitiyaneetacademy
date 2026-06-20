@@ -23,6 +23,23 @@ export default function LoginPage() {
     setErrorMsg("")
 
     try {
+      // 1. Try checking students database table for matching username and password (mobile number)
+      const { data: student, error: studentErr } = await supabase
+        .from("students")
+        .select("id, name, username, password")
+        .eq("username", email.trim())
+        .eq("password", password.trim())
+        .maybeSingle()
+
+      if (!studentErr && student) {
+        // Success! Set cookie and redirect
+        document.cookie = `student_id=${student.id}; path=/; max-age=86400; SameSite=Lax;`
+        router.push("/student/dashboard")
+        router.refresh()
+        return
+      }
+
+      // 2. Otherwise fallback to standard admin Auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password,
@@ -57,7 +74,7 @@ export default function LoginPage() {
         }
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "Invalid credentials. Please contact the administrator.")
+      setErrorMsg(err.message || "Invalid credentials. Please verify your details.")
       setLoading(false)
     }
   }
@@ -80,13 +97,13 @@ export default function LoginPage() {
         <Card className="border-slate-200 shadow-xl bg-white rounded-3xl overflow-hidden relative">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-blue-700"></div>
           <CardHeader className="pb-4 pt-8 text-center">
-            <CardTitle className="text-lg text-slate-800 font-extrabold">Administrator Login</CardTitle>
-            <CardDescription className="text-xs">Secure login to modify academy courses and sections.</CardDescription>
+            <CardTitle className="text-lg text-slate-800 font-extrabold">Portal Login</CardTitle>
+            <CardDescription className="text-xs">Sign in as an Administrator or a Student to view dashboard reviews.</CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
               {errorMsg && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-650 rounded-xl text-xs flex items-start gap-2.5">
+                <div className="p-3 bg-red-50 border border-red-200 text-red-655 rounded-xl text-xs flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span className="leading-tight font-medium">{errorMsg}</span>
                 </div>
@@ -95,11 +112,10 @@ export default function LoginPage() {
               <div className="space-y-2 text-xs">
                 <Label className="text-slate-655 flex items-center gap-1.5 font-semibold">
                   <Mail className="w-3.5 h-3.5 text-slate-400" />
-                  Email Address
+                  Email Address / Username
                 </Label>
                 <Input
-                  type="email"
-                  placeholder="admin@adhityaneet.com"
+                  placeholder="admin@email.com or Student Name"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required

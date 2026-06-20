@@ -6,11 +6,12 @@ export async function updateSession(request: NextRequest) {
 
   const url = request.nextUrl.clone()
 
-  // Only run session and user checks for admin panel and login routes
+  // Only run session and user checks for admin, student and login routes
   const isAdminRoute = url.pathname.startsWith('/admin/dashboard')
+  const isStudentRoute = url.pathname.startsWith('/student/dashboard')
   const isLoginRoute = url.pathname === '/login'
 
-  if (!isAdminRoute && !isLoginRoute) {
+  if (!isAdminRoute && !isStudentRoute && !isLoginRoute) {
     return supabaseResponse
   }
 
@@ -43,6 +44,16 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
+  // Guard student dashboard route
+  if (isStudentRoute) {
+    const studentId = request.cookies.get('student_id')?.value
+    if (!studentId) {
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+    return supabaseResponse
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -63,10 +74,17 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect authenticated users away from /login
-  if (isLoginRoute && user) {
-    const role = user.user_metadata?.role
-    if (role === 'admin') {
-      url.pathname = '/admin/dashboard'
+  if (isLoginRoute) {
+    if (user) {
+      const role = user.user_metadata?.role
+      if (role === 'admin') {
+        url.pathname = '/admin/dashboard'
+        return NextResponse.redirect(url)
+      }
+    }
+    const studentId = request.cookies.get('student_id')?.value
+    if (studentId) {
+      url.pathname = '/student/dashboard'
       return NextResponse.redirect(url)
     }
   }
