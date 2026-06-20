@@ -43,9 +43,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setAdminName(user.user_metadata?.full_name || user.email?.split("@")[0] || "Admin")
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        setAdminName(session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Admin")
+      } else {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          setAdminName(user.user_metadata?.full_name || user.email?.split("@")[0] || "Admin")
+        }
       }
     }
     fetchUser()

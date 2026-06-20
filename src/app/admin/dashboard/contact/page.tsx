@@ -83,7 +83,6 @@ export default function ContactInformationCMSPage() {
 
       if (error) throw error
       alert("Contact Information saved successfully!")
-      fetchContact()
     } catch (err: any) {
       alert(`Save failed: ${err.message}`)
     } finally {

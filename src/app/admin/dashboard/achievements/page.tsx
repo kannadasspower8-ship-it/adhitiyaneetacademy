@@ -93,13 +93,19 @@ export default function AchievementsManagementPage() {
       }
 
       if (formMode === "add") {
-        const { error } = await supabase.from("achievements").insert(payload)
+        const { data, error } = await supabase.from("achievements").insert(payload).select()
         if (error) throw error
         alert("Achievement topper added successfully!")
+        if (data && data.length > 0) {
+          setAchievements(prev => [data[0], ...prev])
+        } else {
+          fetchAchievements()
+        }
       } else {
         const { error } = await supabase.from("achievements").update(payload).eq("id", achievementForm.id)
         if (error) throw error
         alert("Achievement topper updated successfully!")
+        setAchievements(prev => prev.map(a => a.id === achievementForm.id ? { ...a, ...payload } : a))
       }
 
       setAchievementForm({
@@ -112,7 +118,6 @@ export default function AchievementsManagementPage() {
         file: null,
       })
       setFormOpen(false)
-      fetchAchievements()
     } catch (err: any) {
       alert(`Save failed: ${err.message}`)
     } finally {
@@ -141,7 +146,7 @@ export default function AchievementsManagementPage() {
       const { error } = await supabase.from("achievements").delete().eq("id", id)
       if (error) throw error
       alert(`Achievement record for "${name}" deleted.`)
-      fetchAchievements()
+      setAchievements(prev => prev.filter(a => a.id !== id))
     } catch (err: any) {
       alert(`Delete failed: ${err.message}`)
     } finally {

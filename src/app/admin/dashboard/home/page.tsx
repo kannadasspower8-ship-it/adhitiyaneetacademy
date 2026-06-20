@@ -117,9 +117,9 @@ export default function HomepageCMSPage() {
         })
 
       if (error) throw error
-      alert("Homepage content saved successfully!")
+      setHeroImageUrl(finalHeroImage)
       setFile(null)
-      fetchHomepageData()
+      alert("Homepage content saved successfully!")
     } catch (err: any) {
       alert(`Save failed: ${err.message}`)
     } finally {

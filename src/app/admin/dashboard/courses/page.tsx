@@ -96,13 +96,19 @@ export default function CoursesManagementPage() {
       }
 
       if (formMode === "add") {
-        const { error } = await supabase.from("courses").insert(payload)
+        const { data, error } = await supabase.from("courses").insert(payload).select()
         if (error) throw error
         alert("Course created successfully!")
+        if (data && data.length > 0) {
+          setCourses(prev => [...prev, data[0]])
+        } else {
+          fetchCourses()
+        }
       } else {
         const { error } = await supabase.from("courses").update(payload).eq("id", courseForm.id)
         if (error) throw error
         alert("Course updated successfully!")
+        setCourses(prev => prev.map(c => c.id === courseForm.id ? { ...c, ...payload } : c))
       }
 
       setCourseForm({
@@ -116,7 +122,6 @@ export default function CoursesManagementPage() {
         file: null,
       })
       setFormOpen(false)
-      fetchCourses()
     } catch (err: any) {
       alert(`Save failed: ${err.message}`)
     } finally {
@@ -146,7 +151,7 @@ export default function CoursesManagementPage() {
       const { error } = await supabase.from("courses").delete().eq("id", id)
       if (error) throw error
       alert(`Course "${title}" deleted successfully.`)
-      fetchCourses()
+      setCourses(prev => prev.filter(c => c.id !== id))
     } catch (err: any) {
       alert(`Delete failed: ${err.message}`)
     } finally {

@@ -92,10 +92,10 @@ export default function GalleryManagementPage() {
 
     try {
       const imageUrl = await uploadFile(file)
-      const { error } = await supabase.from("gallery").insert({
+      const { data, error } = await supabase.from("gallery").insert({
         image_url: imageUrl,
         caption: caption.trim() || null,
-      })
+      }).select()
 
       if (error) throw error
       alert("Image uploaded and added to gallery successfully!")
@@ -105,7 +105,11 @@ export default function GalleryManagementPage() {
       const fileInput = document.getElementById("galleryUpload") as HTMLInputElement
       if (fileInput) fileInput.value = ""
 
-      fetchGallery()
+      if (data && data.length > 0) {
+        setGallery(prev => [data[0], ...prev])
+      } else {
+        fetchGallery()
+      }
     } catch (err: any) {
       alert(`Upload failed: ${err.message}`)
     } finally {
@@ -124,7 +128,7 @@ export default function GalleryManagementPage() {
       if (error) throw error
       
       setEditingId(null)
-      fetchGallery()
+      setGallery(prev => prev.map(g => g.id === id ? { ...g, caption: editCaption.trim() || null } : g))
     } catch (err: any) {
       alert(`Failed to save caption: ${err.message}`)
     } finally {
@@ -139,7 +143,7 @@ export default function GalleryManagementPage() {
       const { error } = await supabase.from("gallery").delete().eq("id", id)
       if (error) throw error
       alert("Gallery image deleted successfully.")
-      fetchGallery()
+      setGallery(prev => prev.filter(g => g.id !== id))
     } catch (err: any) {
       alert(`Delete failed: ${err.message}`)
     } finally {
