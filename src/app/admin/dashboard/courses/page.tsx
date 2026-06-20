@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Edit2, Trash2, Loader2, Image as ImageIcon } from "lucide-react"
+import { Plus, Edit2, Trash2, Loader2, Image as ImageIcon, RefreshCw } from "lucide-react"
 import { courses as starterCourses } from "@/data/mockData"
+import { toast } from "@/lib/toast"
 
 const starterCourseRows = starterCourses.map((course) => ({
   id: course.id,
@@ -25,6 +26,7 @@ export default function CoursesManagementPage() {
   const [courses, setCourses] = useState<any[]>(starterCourseRows)
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   // Form states
   const [formOpen, setFormOpen] = useState(false)
@@ -40,28 +42,49 @@ export default function CoursesManagementPage() {
     file: null as File | null,
   })
 
-  const fetchCourses = useCallback(async () => {
-    setFetching(true)
+  // Load from local storage cache immediately
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("adhitya-neet-courses-cms")
+      if (cached) {
+        try {
+          setCourses(JSON.parse(cached))
+          setFetching(false)
+        } catch (e) {
+          console.error("Error parsing courses cache:", e)
+        }
+      }
+    }
+  }, [])
+
+  const fetchCourses = useCallback(async (isSilent = false) => {
+    if (!isSilent) setFetching(true)
+    else setIsSyncing(true)
     try {
       const { data, error } = await supabase
         .from("courses")
         .select("*")
         .order("created_at", { ascending: true })
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         setCourses(data)
-      } else {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("adhitya-neet-courses-cms", JSON.stringify(data))
+        }
+      } else if (!error) {
         setCourses(starterCourseRows)
       }
     } catch (err) {
       console.error(err)
     } finally {
       setFetching(false)
+      setIsSyncing(false)
     }
   }, [supabase])
 
   useEffect(() => {
-    fetchCourses()
+    const hasCache = typeof window !== "undefined" && localStorage.getItem("adhitya-neet-courses-cms")
+    fetchCourses(hasCache ? true : false)
   }, [fetchCourses])
 
   const uploadFile = async (file: File, folder: string): Promise<string> => {
@@ -78,6 +101,7 @@ export default function CoursesManagementPage() {
   const handleSaveCourse = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    const toastId = toast.loading(formMode === "add" ? "Publishing new course..." : "Updating course...")
 
     try {
       let finalImg = courseForm.imageUrl
@@ -98,17 +122,28 @@ export default function CoursesManagementPage() {
       if (formMode === "add") {
         const { data, error } = await supabase.from("courses").insert(payload).select()
         if (error) throw error
-        alert("Course created successfully!")
-        if (data && data.length > 0) {
-          setCourses(prev => [...prev, data[0]])
-        } else {
-          fetchCourses()
-        }
+        
+        const newCourse = data && data.length > 0 ? data[0] : { id: `course-${Date.now()}`, ...payload }
+        setCourses(prev => {
+          const updated = [...prev, newCourse]
+          if (typeof window !== "undefined") {
+            localStorage.setItem("adhitya-neet-courses-cms", JSON.stringify(updated))
+          }
+          return updated
+        })
+        toast.success("Course created successfully!", toastId)
       } else {
         const { error } = await supabase.from("courses").update(payload).eq("id", courseForm.id)
         if (error) throw error
-        alert("Course updated successfully!")
-        setCourses(prev => prev.map(c => c.id === courseForm.id ? { ...c, ...payload } : c))
+        
+        setCourses(prev => {
+          const updated = prev.map(c => c.id === courseForm.id ? { ...c, ...payload } : c)
+          if (typeof window !== "undefined") {
+            localStorage.setItem("adhitya-neet-courses-cms", JSON.stringify(updated))
+          }
+          return updated
+        })
+        toast.success("Course updated successfully!", toastId)
       }
 
       setCourseForm({
@@ -123,7 +158,7 @@ export default function CoursesManagementPage() {
       })
       setFormOpen(false)
     } catch (err: any) {
-      alert(`Save failed: ${err.message}`)
+      toast.error(`Save failed: ${err.message}`, toastId)
     } finally {
       setLoading(false)
     }
@@ -147,13 +182,25 @@ export default function CoursesManagementPage() {
   const handleDelete = async (id: string, title: string) => {
     if (!confirm(`Are you sure you want to delete course "${title}"?`)) return
     setLoading(true)
+    const toastId = toast.loading(`Deleting course "${title}"...`)
+
+    const originalCourses = [...courses]
+    const updated = courses.filter(c => c.id !== id)
+    setCourses(updated)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("adhitya-neet-courses-cms", JSON.stringify(updated))
+    }
+
     try {
       const { error } = await supabase.from("courses").delete().eq("id", id)
       if (error) throw error
-      alert(`Course "${title}" deleted successfully.`)
-      setCourses(prev => prev.filter(c => c.id !== id))
+      toast.success(`Course "${title}" deleted successfully.`, toastId)
     } catch (err: any) {
-      alert(`Delete failed: ${err.message}`)
+      setCourses(originalCourses)
+      if (typeof window !== "undefined") {
+        localStorage.setItem("adhitya-neet-courses-cms", JSON.stringify(originalCourses))
+      }
+      toast.error(`Delete failed: ${err.message}`, toastId)
     } finally {
       setLoading(false)
     }
@@ -164,7 +211,15 @@ export default function CoursesManagementPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Courses Management</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            Courses Management
+            {isSyncing && (
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 animate-pulse flex items-center gap-1 font-bold">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                Syncing
+              </span>
+            )}
+          </h1>
           <p className="text-slate-500 text-sm">Add, update, or remove coaching batches and programs.</p>
         </div>
         <Button

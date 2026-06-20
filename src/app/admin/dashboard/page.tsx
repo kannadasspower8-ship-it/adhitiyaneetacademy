@@ -39,39 +39,49 @@ export default function AdminDashboardOverviewPage() {
   })
   const [activities, setActivities] = useState<RecentActivity[]>([])
 
-  const fetchCMSData = useCallback(async () => {
-    setLoading(true)
+  // Load from local cache immediately on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const cachedStats = localStorage.getItem("adhitya-neet-dashboard-stats")
+      const cachedActivities = localStorage.getItem("adhitya-neet-activities")
+      if (cachedStats) {
+        setStats(JSON.parse(cachedStats))
+      }
+      if (cachedActivities) {
+        setActivities(JSON.parse(cachedActivities))
+      }
+    }
+  }, [])
+
+  const fetchCMSData = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true)
     try {
-      // 1. Total Courses
-      const { count: courseCount } = await supabase
-        .from("courses")
-        .select("*", { count: "exact", head: true })
+      const [
+        courseCountRes,
+        galleryCountRes,
+        achievementCountRes,
+        latestCourseRes,
+        latestGalleryRes,
+        latestAchievementRes
+      ] = await Promise.all([
+        supabase.from("courses").select("*", { count: "exact", head: true }),
+        supabase.from("gallery").select("*", { count: "exact", head: true }),
+        supabase.from("achievements").select("*", { count: "exact", head: true }),
+        supabase.from("courses").select("title, created_at").order("created_at", { ascending: false }).limit(1),
+        supabase.from("gallery").select("caption, created_at").order("created_at", { ascending: false }).limit(1),
+        supabase.from("achievements").select("name, rank, created_at").order("created_at", { ascending: false }).limit(1)
+      ])
 
-      // 2. Total Gallery
-      const { count: galleryCount } = await supabase
-        .from("gallery")
-        .select("*", { count: "exact", head: true })
-
-      // 3. Total Achievements
-      const { count: achievementCount } = await supabase
-        .from("achievements")
-        .select("*", { count: "exact", head: true })
-
-      setStats({
-        totalCourses: courseCount || 0,
-        totalGallery: galleryCount || 0,
-        totalAchievements: achievementCount || 0,
-      })
+      const newStats = {
+        totalCourses: courseCountRes.count || 0,
+        totalGallery: galleryCountRes.count || 0,
+        totalAchievements: achievementCountRes.count || 0,
+      }
+      setStats(newStats)
 
       // Construct Mock/Recent Updates timeline based on database content logs
       const updates: RecentActivity[] = []
-
-      const { data: latestCourse } = await supabase
-        .from("courses")
-        .select("title, created_at")
-        .order("created_at", { ascending: false })
-        .limit(1)
-
+      const latestCourse = latestCourseRes.data
       if (latestCourse && latestCourse.length > 0) {
         updates.push({
           type: "course",
@@ -84,12 +94,7 @@ export default function AdminDashboardOverviewPage() {
         })
       }
 
-      const { data: latestGallery } = await supabase
-        .from("gallery")
-        .select("caption, created_at")
-        .order("created_at", { ascending: false })
-        .limit(1)
-
+      const latestGallery = latestGalleryRes.data
       if (latestGallery && latestGallery.length > 0) {
         updates.push({
           type: "gallery",
@@ -102,12 +107,7 @@ export default function AdminDashboardOverviewPage() {
         })
       }
 
-      const { data: latestAchievement } = await supabase
-        .from("achievements")
-        .select("name, rank, created_at")
-        .order("created_at", { ascending: false })
-        .limit(1)
-
+      const latestAchievement = latestAchievementRes.data
       if (latestAchievement && latestAchievement.length > 0) {
         updates.push({
           type: "achievement",
@@ -121,6 +121,11 @@ export default function AdminDashboardOverviewPage() {
       }
 
       setActivities(updates)
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("adhitya-neet-dashboard-stats", JSON.stringify(newStats))
+        localStorage.setItem("adhitya-neet-activities", JSON.stringify(updates))
+      }
     } catch (err) {
       console.error(err)
     } finally {
@@ -129,7 +134,8 @@ export default function AdminDashboardOverviewPage() {
   }, [supabase])
 
   useEffect(() => {
-    fetchCMSData()
+    const hasCache = typeof window !== "undefined" && localStorage.getItem("adhitya-neet-dashboard-stats")
+    fetchCMSData(hasCache ? true : false)
   }, [fetchCMSData])
 
   return (

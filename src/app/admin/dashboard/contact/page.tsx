@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { PhoneCall, Save, Loader2, Phone, Mail, MapPin, MessageCircle, Globe } from "lucide-react"
+import { PhoneCall, Save, Loader2, Phone, Mail, MapPin, MessageCircle, Globe, RefreshCw } from "lucide-react"
 import { cmsContent } from "@/data/cmsContent"
+import { toast } from "@/lib/toast"
 
 const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -21,6 +22,7 @@ export default function ContactInformationCMSPage() {
   const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   // Form State
   const [phone, setPhone] = useState(cmsContent.global.phonePrimary)
@@ -32,8 +34,30 @@ export default function ContactInformationCMSPage() {
   // Social Links State
   const [instagram, setInstagram] = useState(cmsContent.global.socialLinks.instagram)
 
-  const fetchContact = useCallback(async () => {
-    setFetching(true)
+  // Load from local storage cache immediately
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("adhitya-neet-contact-cms")
+      if (cached) {
+        try {
+          const cachedData = JSON.parse(cached)
+          setPhone(cachedData.phone || "")
+          setEmail(cachedData.email || "")
+          setWhatsapp(cachedData.whatsapp || "")
+          setAddress(cachedData.address || "")
+          setMapEmbed(cachedData.map_embed || "")
+          setInstagram(cachedData.instagram || "")
+          setFetching(false) // Cache loaded, skip initial full-screen block
+        } catch (e) {
+          console.error("Error parsing contact cache:", e)
+        }
+      }
+    }
+  }, [])
+
+  const fetchContact = useCallback(async (isSilent = false) => {
+    if (!isSilent) setFetching(true)
+    else setIsSyncing(true)
     try {
       const { data, error } = await supabase
         .from("contact_information")
@@ -48,43 +72,56 @@ export default function ContactInformationCMSPage() {
         setAddress(data.address || "")
         setMapEmbed(data.map_embed || "")
         setInstagram(data.instagram || "")
+        if (typeof window !== "undefined") {
+          localStorage.setItem("adhitya-neet-contact-cms", JSON.stringify(data))
+        }
       }
     } catch (err) {
       console.error(err)
     } finally {
       setFetching(false)
+      setIsSyncing(false)
     }
   }, [supabase])
 
   useEffect(() => {
-    fetchContact()
+    const hasCache = typeof window !== "undefined" && localStorage.getItem("adhitya-neet-contact-cms")
+    fetchContact(hasCache ? true : false)
   }, [fetchContact])
 
   const handleSaveContact = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    const toastId = toast.loading("Saving contact details...")
 
     try {
+      const payload = {
+        id: "main",
+        phone: phone.trim(),
+        email: email.trim(),
+        whatsapp: whatsapp.trim(),
+        address: address.trim(),
+        map_embed: mapEmbed.trim(),
+        facebook: "",
+        instagram: instagram.trim(),
+        twitter: "",
+        youtube: "",
+        updated_at: new Date().toISOString(),
+      }
+
       const { error } = await supabase
         .from("contact_information")
-        .upsert({
-          id: "main",
-          phone: phone.trim(),
-          email: email.trim(),
-          whatsapp: whatsapp.trim(),
-          address: address.trim(),
-          map_embed: mapEmbed.trim(),
-          facebook: "",
-          instagram: instagram.trim(),
-          twitter: "",
-          youtube: "",
-          updated_at: new Date().toISOString(),
-        })
+        .upsert(payload)
 
       if (error) throw error
-      alert("Contact Information saved successfully!")
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("adhitya-neet-contact-cms", JSON.stringify(payload))
+      }
+
+      toast.success("Contact Information saved successfully!", toastId)
     } catch (err: any) {
-      alert(`Save failed: ${err.message}`)
+      toast.error(`Save failed: ${err.message}`, toastId)
     } finally {
       setLoading(false)
     }
@@ -104,8 +141,16 @@ export default function ContactInformationCMSPage() {
       <form onSubmit={handleSaveContact} className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Contact Information CMS</h1>
-            <p className="text-slate-500 text-sm">Update direct academy helplines, support mailboxes, locations, and social links.</p>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              Contact Information CMS
+              {isSyncing && (
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 animate-pulse flex items-center gap-1 font-bold">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  Syncing
+                </span>
+              )}
+            </h1>
+            <p className="text-slate-500 text-sm font-semibold">Update direct academy helplines, support mailboxes, locations, and social links.</p>
           </div>
           <Button
             type="submit"

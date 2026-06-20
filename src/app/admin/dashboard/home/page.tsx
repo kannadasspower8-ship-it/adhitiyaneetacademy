@@ -7,9 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Save, Eye, Loader2, Plus, Trash2, FileText } from "lucide-react"
+import { Save, Eye, Loader2, Plus, Trash2, FileText, RefreshCw } from "lucide-react"
 import { cmsContent } from "@/data/cmsContent"
 import { academyStats, features, topRanks } from "@/data/mockData"
+import { toast } from "@/lib/toast"
 
 const starterStats = academyStats.map(({ label, value }) => ({ label, value }))
 const starterWhyItems = features.map(({ icon, title, description }) => ({ icon, title, description }))
@@ -19,6 +20,7 @@ export default function HomepageCMSPage() {
   const supabase = useMemo(() => createClient(), [])
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   // Homepage CMS state
   const [heroTitle, setHeroTitle] = useState(cmsContent.home.hero.titleHighlight)
@@ -41,8 +43,39 @@ export default function HomepageCMSPage() {
   // Preview State modal
   const [previewOpen, setPreviewOpen] = useState(false)
 
-  const fetchHomepageData = useCallback(async () => {
-    setFetching(true)
+  // Load from local storage cache immediately
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("adhitya-neet-home-cms")
+      if (cached) {
+        try {
+          const cachedData = JSON.parse(cached)
+          setHeroTitle(cachedData.hero_title || "")
+          setHeroDescription(cachedData.hero_description || "")
+          setHeroImageUrl(cachedData.hero_image || "")
+          setCtaText(cachedData.cta_text || "")
+          if (cachedData.stats && Array.isArray(cachedData.stats)) {
+            setStats(cachedData.stats)
+          }
+          setWhyTitle(cachedData.why_choose_us_title || "")
+          setWhyDesc(cachedData.why_choose_us_description || "")
+          if (cachedData.why_choose_us_items && Array.isArray(cachedData.why_choose_us_items)) {
+            setWhyItems(cachedData.why_choose_us_items)
+          }
+          if (cachedData.success_highlights && Array.isArray(cachedData.success_highlights)) {
+            setHighlights(cachedData.success_highlights)
+          }
+          setFetching(false) // Cache loaded successfully, bypass full page loader
+        } catch (e) {
+          console.error("Error parsing homepage cache:", e)
+        }
+      }
+    }
+  }, [])
+
+  const fetchHomepageData = useCallback(async (isSilent = false) => {
+    if (!isSilent) setFetching(true)
+    else setIsSyncing(true)
     try {
       const { data, error } = await supabase
         .from("website_home")
@@ -66,16 +99,21 @@ export default function HomepageCMSPage() {
         if (data.success_highlights && Array.isArray(data.success_highlights)) {
           setHighlights(data.success_highlights)
         }
+        if (typeof window !== "undefined") {
+          localStorage.setItem("adhitya-neet-home-cms", JSON.stringify(data))
+        }
       }
     } catch (err) {
       console.error(err)
     } finally {
       setFetching(false)
+      setIsSyncing(false)
     }
   }, [supabase])
 
   useEffect(() => {
-    fetchHomepageData()
+    const hasCache = typeof window !== "undefined" && localStorage.getItem("adhitya-neet-home-cms")
+    fetchHomepageData(hasCache ? true : false)
   }, [fetchHomepageData])
 
   const uploadFile = async (file: File): Promise<string> => {
@@ -92,6 +130,7 @@ export default function HomepageCMSPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    const toastId = toast.loading("Saving homepage content...")
 
     try {
       let finalHeroImage = heroImageUrl
@@ -100,28 +139,35 @@ export default function HomepageCMSPage() {
         finalHeroImage = await uploadFile(file)
       }
 
+      const payload = {
+        id: "main",
+        hero_title: heroTitle.trim(),
+        hero_description: heroDescription.trim(),
+        hero_image: finalHeroImage,
+        cta_text: ctaText.trim(),
+        stats: stats,
+        why_choose_us_title: whyTitle.trim(),
+        why_choose_us_description: whyDesc.trim(),
+        why_choose_us_items: whyItems,
+        success_highlights: highlights,
+        updated_at: new Date().toISOString(),
+      }
+
       const { error } = await supabase
         .from("website_home")
-        .upsert({
-          id: "main",
-          hero_title: heroTitle.trim(),
-          hero_description: heroDescription.trim(),
-          hero_image: finalHeroImage,
-          cta_text: ctaText.trim(),
-          stats: stats,
-          why_choose_us_title: whyTitle.trim(),
-          why_choose_us_description: whyDesc.trim(),
-          why_choose_us_items: whyItems,
-          success_highlights: highlights,
-          updated_at: new Date().toISOString(),
-        })
+        .upsert(payload)
 
       if (error) throw error
       setHeroImageUrl(finalHeroImage)
       setFile(null)
-      alert("Homepage content saved successfully!")
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("adhitya-neet-home-cms", JSON.stringify(payload))
+      }
+
+      toast.success("Homepage content saved successfully!", toastId)
     } catch (err: any) {
-      alert(`Save failed: ${err.message}`)
+      toast.error(`Save failed: ${err.message}`, toastId)
     } finally {
       setLoading(false)
     }
@@ -212,7 +258,15 @@ export default function HomepageCMSPage() {
       <form onSubmit={handleSave} className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Homepage CMS Panel</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              Homepage CMS Panel
+              {isSyncing && (
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 animate-pulse flex items-center gap-1 font-bold">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  Syncing
+                </span>
+              )}
+            </h1>
             <p className="text-slate-500 text-xs">Modify Hero description, Hero image, and Why Choose Us section text.</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0">

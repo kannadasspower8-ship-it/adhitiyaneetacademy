@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Edit2, Trash2, Loader2, Trophy } from "lucide-react"
+import { Plus, Edit2, Trash2, Loader2, Trophy, RefreshCw } from "lucide-react"
 import { topRanks } from "@/data/mockData"
+import { toast } from "@/lib/toast"
 
 const starterAchievementRows = topRanks.map((achievement, index) => ({
   id: `starter-achievement-${index + 1}`,
@@ -24,6 +25,7 @@ export default function AchievementsManagementPage() {
   const [achievements, setAchievements] = useState<any[]>(starterAchievementRows)
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   // Form states
   const [formOpen, setFormOpen] = useState(false)
@@ -38,28 +40,49 @@ export default function AchievementsManagementPage() {
     file: null as File | null,
   })
 
-  const fetchAchievements = useCallback(async () => {
-    setFetching(true)
+  // Load from local storage cache immediately
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("adhitya-neet-achievements-cms")
+      if (cached) {
+        try {
+          setAchievements(JSON.parse(cached))
+          setFetching(false)
+        } catch (e) {
+          console.error("Error parsing achievements cache:", e)
+        }
+      }
+    }
+  }, [])
+
+  const fetchAchievements = useCallback(async (isSilent = false) => {
+    if (!isSilent) setFetching(true)
+    else setIsSyncing(true)
     try {
       const { data, error } = await supabase
         .from("achievements")
         .select("*")
         .order("created_at", { ascending: false })
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         setAchievements(data)
-      } else {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("adhitya-neet-achievements-cms", JSON.stringify(data))
+        }
+      } else if (!error) {
         setAchievements(starterAchievementRows)
       }
     } catch (err) {
       console.error(err)
     } finally {
       setFetching(false)
+      setIsSyncing(false)
     }
   }, [supabase])
 
   useEffect(() => {
-    fetchAchievements()
+    const hasCache = typeof window !== "undefined" && localStorage.getItem("adhitya-neet-achievements-cms")
+    fetchAchievements(hasCache ? true : false)
   }, [fetchAchievements])
 
   const uploadFile = async (file: File, folder: string): Promise<string> => {
@@ -76,6 +99,7 @@ export default function AchievementsManagementPage() {
   const handleSaveAchievement = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    const toastId = toast.loading(formMode === "add" ? "Adding topper achievement..." : "Updating topper details...")
 
     try {
       let finalImg = achievementForm.imageUrl
@@ -95,17 +119,28 @@ export default function AchievementsManagementPage() {
       if (formMode === "add") {
         const { data, error } = await supabase.from("achievements").insert(payload).select()
         if (error) throw error
-        alert("Achievement topper added successfully!")
-        if (data && data.length > 0) {
-          setAchievements(prev => [data[0], ...prev])
-        } else {
-          fetchAchievements()
-        }
+        
+        const newAchievement = data && data.length > 0 ? data[0] : { id: `achievement-${Date.now()}`, ...payload }
+        setAchievements(prev => {
+          const updated = [newAchievement, ...prev]
+          if (typeof window !== "undefined") {
+            localStorage.setItem("adhitya-neet-achievements-cms", JSON.stringify(updated))
+          }
+          return updated
+        })
+        toast.success("Achievement topper added successfully!", toastId)
       } else {
         const { error } = await supabase.from("achievements").update(payload).eq("id", achievementForm.id)
         if (error) throw error
-        alert("Achievement topper updated successfully!")
-        setAchievements(prev => prev.map(a => a.id === achievementForm.id ? { ...a, ...payload } : a))
+        
+        setAchievements(prev => {
+          const updated = prev.map(a => a.id === achievementForm.id ? { ...a, ...payload } : a)
+          if (typeof window !== "undefined") {
+            localStorage.setItem("adhitya-neet-achievements-cms", JSON.stringify(updated))
+          }
+          return updated
+        })
+        toast.success("Achievement topper updated successfully!", toastId)
       }
 
       setAchievementForm({
@@ -119,7 +154,7 @@ export default function AchievementsManagementPage() {
       })
       setFormOpen(false)
     } catch (err: any) {
-      alert(`Save failed: ${err.message}`)
+      toast.error(`Save failed: ${err.message}`, toastId)
     } finally {
       setLoading(false)
     }
@@ -142,13 +177,25 @@ export default function AchievementsManagementPage() {
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete achievement for "${name}"?`)) return
     setLoading(true)
+    const toastId = toast.loading(`Deleting achievement for "${name}"...`)
+
+    const originalAchievements = [...achievements]
+    const updated = achievements.filter(a => a.id !== id)
+    setAchievements(updated)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("adhitya-neet-achievements-cms", JSON.stringify(updated))
+    }
+
     try {
       const { error } = await supabase.from("achievements").delete().eq("id", id)
       if (error) throw error
-      alert(`Achievement record for "${name}" deleted.`)
-      setAchievements(prev => prev.filter(a => a.id !== id))
+      toast.success(`Achievement record for "${name}" deleted.`, toastId)
     } catch (err: any) {
-      alert(`Delete failed: ${err.message}`)
+      setAchievements(originalAchievements)
+      if (typeof window !== "undefined") {
+        localStorage.setItem("adhitya-neet-achievements-cms", JSON.stringify(originalAchievements))
+      }
+      toast.error(`Delete failed: ${err.message}`, toastId)
     } finally {
       setLoading(false)
     }
@@ -159,7 +206,15 @@ export default function AchievementsManagementPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Achievements Management</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            Achievements Management
+            {isSyncing && (
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 animate-pulse flex items-center gap-1 font-bold">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                Syncing
+              </span>
+            )}
+          </h1>
           <p className="text-slate-500 text-sm">Add, update, or remove topper records and academic achievements.</p>
         </div>
         <Button

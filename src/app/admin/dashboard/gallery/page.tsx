@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Trash2, Edit2, Upload, Loader2, Image as ImageIcon, Check } from "lucide-react"
+import { Trash2, Edit2, Upload, Loader2, Image as ImageIcon, Check, RefreshCw } from "lucide-react"
+import { toast } from "@/lib/toast"
 
 const starterGalleryRows = [
   {
@@ -35,6 +36,7 @@ export default function GalleryManagementPage() {
   const [gallery, setGallery] = useState<any[]>(starterGalleryRows)
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   // Upload states
   const [file, setFile] = useState<File | null>(null)
@@ -44,28 +46,49 @@ export default function GalleryManagementPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editCaption, setEditCaption] = useState("")
 
-  const fetchGallery = useCallback(async () => {
-    setFetching(true)
+  // Load from cache immediately on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("adhitya-neet-gallery-cms")
+      if (cached) {
+        try {
+          setGallery(JSON.parse(cached))
+          setFetching(false)
+        } catch (e) {
+          console.error("Error parsing gallery cache:", e)
+        }
+      }
+    }
+  }, [])
+
+  const fetchGallery = useCallback(async (isSilent = false) => {
+    if (!isSilent) setFetching(true)
+    else setIsSyncing(true)
     try {
       const { data, error } = await supabase
         .from("gallery")
         .select("*")
         .order("created_at", { ascending: false })
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         setGallery(data)
-      } else {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("adhitya-neet-gallery-cms", JSON.stringify(data))
+        }
+      } else if (!error) {
         setGallery(starterGalleryRows)
       }
     } catch (err) {
       console.error(err)
     } finally {
       setFetching(false)
+      setIsSyncing(false)
     }
   }, [supabase])
 
   useEffect(() => {
-    fetchGallery()
+    const hasCache = typeof window !== "undefined" && localStorage.getItem("adhitya-neet-gallery-cms")
+    fetchGallery(hasCache ? true : false)
   }, [fetchGallery])
 
   const uploadFile = async (file: File): Promise<string> => {
@@ -89,6 +112,7 @@ export default function GalleryManagementPage() {
     e.preventDefault()
     if (!file) return
     setLoading(true)
+    const toastId = toast.loading("Uploading image to gallery...")
 
     try {
       const imageUrl = await uploadFile(file)
@@ -98,7 +122,6 @@ export default function GalleryManagementPage() {
       }).select()
 
       if (error) throw error
-      alert("Image uploaded and added to gallery successfully!")
       
       setFile(null)
       setCaption("")
@@ -106,12 +129,17 @@ export default function GalleryManagementPage() {
       if (fileInput) fileInput.value = ""
 
       if (data && data.length > 0) {
-        setGallery(prev => [data[0], ...prev])
-      } else {
-        fetchGallery()
+        setGallery(prev => {
+          const updated = [data[0], ...prev]
+          if (typeof window !== "undefined") {
+            localStorage.setItem("adhitya-neet-gallery-cms", JSON.stringify(updated))
+          }
+          return updated
+        })
       }
+      toast.success("Image uploaded successfully!", toastId)
     } catch (err: any) {
-      alert(`Upload failed: ${err.message}`)
+      toast.error(`Upload failed: ${err.message}`, toastId)
     } finally {
       setLoading(false)
     }
@@ -119,6 +147,7 @@ export default function GalleryManagementPage() {
 
   const handleSaveCaption = async (id: string) => {
     setLoading(true)
+    const toastId = toast.loading("Saving caption changes...")
     try {
       const { error } = await supabase
         .from("gallery")
@@ -128,9 +157,16 @@ export default function GalleryManagementPage() {
       if (error) throw error
       
       setEditingId(null)
-      setGallery(prev => prev.map(g => g.id === id ? { ...g, caption: editCaption.trim() || null } : g))
+      setGallery(prev => {
+        const updated = prev.map(g => g.id === id ? { ...g, caption: editCaption.trim() || null } : g)
+        if (typeof window !== "undefined") {
+          localStorage.setItem("adhitya-neet-gallery-cms", JSON.stringify(updated))
+        }
+        return updated
+      })
+      toast.success("Caption saved successfully!", toastId)
     } catch (err: any) {
-      alert(`Failed to save caption: ${err.message}`)
+      toast.error(`Failed to save caption: ${err.message}`, toastId)
     } finally {
       setLoading(false)
     }
@@ -139,13 +175,25 @@ export default function GalleryManagementPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this gallery image?")) return
     setLoading(true)
+    const toastId = toast.loading("Deleting gallery image...")
+
+    const originalGallery = [...gallery]
+    const updated = gallery.filter(g => g.id !== id)
+    setGallery(updated)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("adhitya-neet-gallery-cms", JSON.stringify(updated))
+    }
+
     try {
       const { error } = await supabase.from("gallery").delete().eq("id", id)
       if (error) throw error
-      alert("Gallery image deleted successfully.")
-      setGallery(prev => prev.filter(g => g.id !== id))
+      toast.success("Gallery image deleted successfully.", toastId)
     } catch (err: any) {
-      alert(`Delete failed: ${err.message}`)
+      setGallery(originalGallery)
+      if (typeof window !== "undefined") {
+        localStorage.setItem("adhitya-neet-gallery-cms", JSON.stringify(originalGallery))
+      }
+      toast.error(`Delete failed: ${err.message}`, toastId)
     } finally {
       setLoading(false)
     }
@@ -157,7 +205,15 @@ export default function GalleryManagementPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Gallery Assets</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              Gallery Assets
+              {isSyncing && (
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 animate-pulse flex items-center gap-1 font-bold">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  Syncing
+                </span>
+              )}
+            </h1>
             <p className="text-slate-500 text-sm mt-1">Upload and manage campus photographs, events, and classroom layouts shown on the landing page.</p>
           </div>
           <div className="flex gap-4 items-center text-xs text-slate-450 mt-6 bg-slate-50 p-4 rounded-xl border border-slate-150 font-semibold">
