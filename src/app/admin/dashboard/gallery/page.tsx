@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Trash2, Edit2, Upload, Loader2, Image as ImageIcon, Check, RefreshCw } from "lucide-react"
 import { toast } from "@/lib/toast"
+import { validateUploadedFile } from "@/lib/utils"
+import { logAdminAction } from "@/lib/audit"
 
 const starterGalleryRows = [
   {
@@ -92,6 +94,11 @@ export default function GalleryManagementPage() {
   }, [fetchGallery])
 
   const uploadFile = async (file: File): Promise<string> => {
+    const validation = validateUploadedFile(file)
+    if (!validation.isValid) {
+      throw new Error(validation.error)
+    }
+
     const fileExt = file.name.split(".").pop()
     const fileName = `gallery/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`
     
@@ -103,6 +110,8 @@ export default function GalleryManagementPage() {
       })
 
     if (error) throw error
+
+    await logAdminAction(supabase, `Uploaded file to gallery: ${file.name}`)
 
     const { data: urlData } = supabase.storage.from("academy").getPublicUrl(fileName)
     return urlData.publicUrl
@@ -116,12 +125,15 @@ export default function GalleryManagementPage() {
 
     try {
       const imageUrl = await uploadFile(file)
+      const captionText = caption.trim()
       const { data, error } = await supabase.from("gallery").insert({
         image_url: imageUrl,
-        caption: caption.trim() || null,
+        caption: captionText || null,
       }).select()
 
       if (error) throw error
+
+      await logAdminAction(supabase, `Added gallery image: ${captionText || 'No Caption'}`)
       
       setFile(null)
       setCaption("")
@@ -148,17 +160,20 @@ export default function GalleryManagementPage() {
   const handleSaveCaption = async (id: string) => {
     setLoading(true)
     const toastId = toast.loading("Saving caption changes...")
+    const captionText = editCaption.trim()
     try {
       const { error } = await supabase
         .from("gallery")
-        .update({ caption: editCaption.trim() || null })
+        .update({ caption: captionText || null })
         .eq("id", id)
 
       if (error) throw error
+
+      await logAdminAction(supabase, `Updated gallery image caption: ${captionText || 'No Caption'}`)
       
       setEditingId(null)
       setGallery(prev => {
-        const updated = prev.map(g => g.id === id ? { ...g, caption: editCaption.trim() || null } : g)
+        const updated = prev.map(g => g.id === id ? { ...g, caption: captionText || null } : g)
         if (typeof window !== "undefined") {
           localStorage.setItem("adhitya-neet-gallery-cms", JSON.stringify(updated))
         }
@@ -178,6 +193,7 @@ export default function GalleryManagementPage() {
     const toastId = toast.loading("Deleting gallery image...")
 
     const originalGallery = [...gallery]
+    const itemToDelete = gallery.find(g => g.id === id)
     const updated = gallery.filter(g => g.id !== id)
     setGallery(updated)
     if (typeof window !== "undefined") {
@@ -187,6 +203,9 @@ export default function GalleryManagementPage() {
     try {
       const { error } = await supabase.from("gallery").delete().eq("id", id)
       if (error) throw error
+
+      await logAdminAction(supabase, `Deleted gallery image: ${itemToDelete?.caption || 'No Caption'}`)
+
       toast.success("Gallery image deleted successfully.", toastId)
     } catch (err: any) {
       setGallery(originalGallery)

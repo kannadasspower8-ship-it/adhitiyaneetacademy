@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { verifyToken } from '@/lib/session'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next()
@@ -46,8 +47,9 @@ export async function updateSession(request: NextRequest) {
 
   // Guard student dashboard route
   if (isStudentRoute) {
-    const studentId = request.cookies.get('student_id')?.value
-    if (!studentId) {
+    const token = request.cookies.get('student_session')?.value
+    const payload = token ? await verifyToken(token) : null
+    if (!payload || !payload.student_id) {
       url.pathname = '/login'
       return NextResponse.redirect(url)
     }
@@ -82,8 +84,9 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
       }
     }
-    const studentId = request.cookies.get('student_id')?.value
-    if (studentId) {
+    const token = request.cookies.get('student_session')?.value
+    const payload = token ? await verifyToken(token) : null
+    if (payload && payload.student_id) {
       url.pathname = '/student/dashboard'
       return NextResponse.redirect(url)
     }

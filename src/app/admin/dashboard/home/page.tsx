@@ -11,6 +11,8 @@ import { Save, Eye, Loader2, Plus, Trash2, FileText, RefreshCw } from "lucide-re
 import { cmsContent } from "@/data/cmsContent"
 import { academyStats, features, topRanks } from "@/data/mockData"
 import { toast } from "@/lib/toast"
+import { validateUploadedFile } from "@/lib/utils"
+import { logAdminAction } from "@/lib/audit"
 
 const starterStats = academyStats.map(({ label, value }) => ({ label, value }))
 const starterWhyItems = features.map(({ icon, title, description }) => ({ icon, title, description }))
@@ -117,12 +119,20 @@ export default function HomepageCMSPage() {
   }, [fetchHomepageData])
 
   const uploadFile = async (file: File): Promise<string> => {
+    const validation = validateUploadedFile(file)
+    if (!validation.isValid) {
+      throw new Error(validation.error)
+    }
+
     const fileName = `home/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`
     const { error } = await supabase.storage.from("academy").upload(fileName, file, {
       cacheControl: "3600",
       upsert: true,
     })
     if (error) throw error
+
+    await logAdminAction(supabase, `Uploaded file to homepage: ${file.name}`)
+
     const { data: urlData } = supabase.storage.from("academy").getPublicUrl(fileName)
     return urlData.publicUrl
   }
@@ -158,6 +168,9 @@ export default function HomepageCMSPage() {
         .upsert(payload)
 
       if (error) throw error
+
+      await logAdminAction(supabase, "Updated Homepage CMS contents")
+
       setHeroImageUrl(finalHeroImage)
       setFile(null)
 

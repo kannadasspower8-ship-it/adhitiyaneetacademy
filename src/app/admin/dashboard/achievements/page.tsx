@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Plus, Edit2, Trash2, Loader2, Trophy, RefreshCw } from "lucide-react"
 import { topRanks } from "@/data/mockData"
 import { toast } from "@/lib/toast"
+import { validateUploadedFile } from "@/lib/utils"
+import { logAdminAction } from "@/lib/audit"
 
 const starterAchievementRows = topRanks.map((achievement, index) => ({
   id: `starter-achievement-${index + 1}`,
@@ -86,12 +88,20 @@ export default function AchievementsManagementPage() {
   }, [fetchAchievements])
 
   const uploadFile = async (file: File, folder: string): Promise<string> => {
+    const validation = validateUploadedFile(file)
+    if (!validation.isValid) {
+      throw new Error(validation.error)
+    }
+
     const fileName = `${folder}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`
     const { error } = await supabase.storage.from("academy").upload(fileName, file, {
       cacheControl: "3600",
       upsert: true,
     })
     if (error) throw error
+
+    await logAdminAction(supabase, `Uploaded achievements file: ${file.name}`)
+
     const { data: urlData } = supabase.storage.from("academy").getPublicUrl(fileName)
     return urlData.publicUrl
   }
@@ -119,6 +129,8 @@ export default function AchievementsManagementPage() {
       if (formMode === "add") {
         const { data, error } = await supabase.from("achievements").insert(payload).select()
         if (error) throw error
+
+        await logAdminAction(supabase, `Created achievement topper: ${payload.name} (${payload.rank}, ${payload.year})`)
         
         const newAchievement = data && data.length > 0 ? data[0] : { id: `achievement-${Date.now()}`, ...payload }
         setAchievements(prev => {
@@ -132,6 +144,8 @@ export default function AchievementsManagementPage() {
       } else {
         const { error } = await supabase.from("achievements").update(payload).eq("id", achievementForm.id)
         if (error) throw error
+
+        await logAdminAction(supabase, `Updated achievement topper: ${payload.name} (${payload.rank}, ${payload.year})`)
         
         setAchievements(prev => {
           const updated = prev.map(a => a.id === achievementForm.id ? { ...a, ...payload } : a)
@@ -189,6 +203,9 @@ export default function AchievementsManagementPage() {
     try {
       const { error } = await supabase.from("achievements").delete().eq("id", id)
       if (error) throw error
+
+      await logAdminAction(supabase, `Deleted achievement topper: ${name}`)
+
       toast.success(`Achievement record for "${name}" deleted.`, toastId)
     } catch (err: any) {
       setAchievements(originalAchievements)

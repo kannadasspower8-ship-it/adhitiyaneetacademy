@@ -8,10 +8,10 @@ import { Footer } from "@/components/layout/Footer"
 export default function RootLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   
-  // Hide public navigation, footer, and whatsapp button for all admin/login pages
-  const isAdminOrLogin = pathname.startsWith("/admin") || pathname.startsWith("/login")
+  // Hide public navigation, footer, and whatsapp button for all admin/login/student pages
+  const isAdminOrLoginOrStudent = pathname.startsWith("/admin") || pathname.startsWith("/login") || pathname.startsWith("/student")
 
-  if (isAdminOrLogin) {
+  if (isAdminOrLoginOrStudent) {
     return <main className="flex-grow">{children}</main>
   }
 

@@ -32,6 +32,7 @@ import {
 import { toast } from "@/lib/toast"
 import { generateMonthlyReport, generateCompleteReport } from "@/lib/excel-export"
 import * as XLSX from "xlsx"
+import { logAdminAction } from "@/lib/audit"
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -407,6 +408,8 @@ export default function MarksRegistryPage() {
         }
       }
 
+      await logAdminAction(supabase, `Entered marks for test: ${testName} (${selectedBatch}, ${successCount} students)`)
+
       toast.success(`✅ Test Record Saved Successfully! (${successCount} students)`, tid)
       fetchData(true)
     } catch (err: any) {
@@ -484,6 +487,8 @@ export default function MarksRegistryPage() {
           if (error) throw error
         }
       }
+
+      await logAdminAction(supabase, `Deleted marks registry entry for test: ${rec.testName} (${rec.batch})`)
 
       toast.success("Test record deleted successfully.", tid)
       fetchData(true)
@@ -974,7 +979,7 @@ export default function MarksRegistryPage() {
                             supabase.from("student_marks")
                               .select("correct_answers, wrong_answers, unanswered_questions, total, percentage, max_marks, students ( name, batch )")
                               .eq("test_id", rec.testId)
-                              .then(({ data }) => {
+                              .then(({ data }: any) => {
                                 if (data) {
                                   const filtered = data.filter((m: any) => m.students?.batch === rec.batch)
                                   const exportRows = filtered.map((m: any) => ({

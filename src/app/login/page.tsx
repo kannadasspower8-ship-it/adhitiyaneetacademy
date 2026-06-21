@@ -16,27 +16,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setErrorMsg("")
 
     try {
-      // 1. Try checking students database table for matching username and password (mobile number)
-      const { data: student, error: studentErr } = await supabase
-        .from("students")
-        .select("id, name, username, password")
-        .eq("username", email.trim())
-        .eq("password", password.trim())
-        .maybeSingle()
+      // 1. Try student login first (if it's not a standard email address)
+      const isEmail = email.includes("@")
+      if (!isEmail) {
+        const res = await fetch("/api/student/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: email, password }),
+        })
 
-      if (!studentErr && student) {
-        // Success! Set cookie and redirect
-        document.cookie = `student_id=${student.id}; path=/; max-age=86400; SameSite=Lax;`
-        router.push("/student/dashboard")
-        router.refresh()
-        return
+        if (res.ok) {
+          router.push("/student/dashboard")
+          router.refresh()
+          return
+        }
       }
 
       // 2. Otherwise fallback to standard admin Auth

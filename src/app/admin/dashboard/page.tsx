@@ -152,7 +152,7 @@ export default function AdminDashboardOverviewPage() {
         </div>
         <Button
           variant="outline"
-          onClick={fetchCMSData}
+          onClick={() => fetchCMSData()}
           disabled={loading}
           className="border-slate-250 text-slate-600 flex items-center gap-2 rounded-xl h-12 px-5 shrink-0 relative z-10 font-bold text-sm w-full md:w-auto justify-center"
         >

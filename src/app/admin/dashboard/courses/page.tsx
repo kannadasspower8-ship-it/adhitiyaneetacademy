@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Plus, Edit2, Trash2, Loader2, Image as ImageIcon, RefreshCw } from "lucide-react"
 import { courses as starterCourses } from "@/data/mockData"
 import { toast } from "@/lib/toast"
+import { validateUploadedFile } from "@/lib/utils"
+import { logAdminAction } from "@/lib/audit"
 
 const starterCourseRows = starterCourses.map((course) => ({
   id: course.id,
@@ -88,12 +90,20 @@ export default function CoursesManagementPage() {
   }, [fetchCourses])
 
   const uploadFile = async (file: File, folder: string): Promise<string> => {
+    const validation = validateUploadedFile(file)
+    if (!validation.isValid) {
+      throw new Error(validation.error)
+    }
+
     const fileName = `${folder}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`
     const { error } = await supabase.storage.from("academy").upload(fileName, file, {
       cacheControl: "3600",
       upsert: true,
     })
     if (error) throw error
+
+    await logAdminAction(supabase, `Uploaded course file: ${file.name}`)
+
     const { data: urlData } = supabase.storage.from("academy").getPublicUrl(fileName)
     return urlData.publicUrl
   }
@@ -122,6 +132,8 @@ export default function CoursesManagementPage() {
       if (formMode === "add") {
         const { data, error } = await supabase.from("courses").insert(payload).select()
         if (error) throw error
+
+        await logAdminAction(supabase, `Created course: ${payload.title}`)
         
         const newCourse = data && data.length > 0 ? data[0] : { id: `course-${Date.now()}`, ...payload }
         setCourses(prev => {
@@ -135,6 +147,8 @@ export default function CoursesManagementPage() {
       } else {
         const { error } = await supabase.from("courses").update(payload).eq("id", courseForm.id)
         if (error) throw error
+
+        await logAdminAction(supabase, `Updated course: ${payload.title}`)
         
         setCourses(prev => {
           const updated = prev.map(c => c.id === courseForm.id ? { ...c, ...payload } : c)
@@ -194,6 +208,9 @@ export default function CoursesManagementPage() {
     try {
       const { error } = await supabase.from("courses").delete().eq("id", id)
       if (error) throw error
+
+      await logAdminAction(supabase, `Deleted course: ${title}`)
+
       toast.success(`Course "${title}" deleted successfully.`, toastId)
     } catch (err: any) {
       setCourses(originalCourses)

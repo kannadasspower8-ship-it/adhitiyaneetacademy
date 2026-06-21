@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Save, Loader2, Landmark } from "lucide-react"
 import { cmsContent } from "@/data/cmsContent"
+import { validateUploadedFile } from "@/lib/utils"
+import { logAdminAction } from "@/lib/audit"
 
 export default function AboutPageCMSPage() {
   const supabase = useMemo(() => createClient(), [])
@@ -53,12 +55,20 @@ export default function AboutPageCMSPage() {
   }, [fetchAboutData])
 
   const uploadFile = async (file: File): Promise<string> => {
+    const validation = validateUploadedFile(file)
+    if (!validation.isValid) {
+      throw new Error(validation.error)
+    }
+
     const fileName = `about/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`
     const { error } = await supabase.storage.from("academy").upload(fileName, file, {
       cacheControl: "3600",
       upsert: true,
     })
     if (error) throw error
+
+    await logAdminAction(supabase, `Uploaded file to about section: ${file.name}`)
+
     const { data: urlData } = supabase.storage.from("academy").getPublicUrl(fileName)
     return urlData.publicUrl
   }
@@ -72,7 +82,6 @@ export default function AboutPageCMSPage() {
 
       if (file) {
         const uploadedUrl = await uploadFile(file)
-        // For simple CMS demo, we replace the first image or add it
         updatedImages = [uploadedUrl]
       }
 
@@ -89,6 +98,9 @@ export default function AboutPageCMSPage() {
         })
 
       if (error) throw error
+
+      await logAdminAction(supabase, "Updated About Page CMS contents")
+
       alert("About page content saved successfully!")
       setFile(null)
       fetchAboutData()
