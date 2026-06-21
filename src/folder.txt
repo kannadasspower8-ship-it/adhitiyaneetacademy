@@ -1,0 +1,119 @@
+1. The Root Cause of the Crash
+Next.js deployments on Netlify compile the project's middleware.ts file into a Netlify Edge Function (which runs on a Deno-based CDN runtime close to the user). Netlify imposes a strict 1.5-second execution limit on these functions.
+
+Two main issues trigger a timeout crash:
+
+Network Latency inside the Middleware: By default, standard Supabase templates call supabase.auth.getUser() on every single page request (including the public home page, stylesheets, scripts, and public assets). The middleware is forced to wait for a round-trip network response from the Supabase API on every load. If there is any network congestion, it exceeds 1.5 seconds and crashes.
+Request Context Routing Loop (Deno Proxy Bug): Initializing the middleware response as NextResponse.next({ request }) inside Netlify's Deno container causes the CDN proxy to recursively modify headers on pass-through pages, causing a connection stream freeze that times out.
+2. The Comprehensive Solution (Step-by-Step)
+Step A: Limit Middleware Execution to Guarded Routes Only
+Instead of matching every route on the site, modify the src/middleware.ts config to only trigger the Edge function on pages that actually require session checking (the admin panel and the login page). All public pages will completely bypass the Edge function, resulting in a 0ms overhead and instant load times.
+
+Modify src/middleware.ts:
+
+typescript
+import { type NextRequest } from 'next/server'
+import { updateSession } from '@/lib/supabase/middleware'
+export async function middleware(request: NextRequest) {
+  return await updateSession(request)
+}
+export const config = {
+  matcher: [
+    '/admin/:path*', // Trigger ONLY on admin dashboard sub-routes
+    '/login',        // Trigger ONLY on the login page
+  ],
+}
+Step B: Optimize Middleware Response Handlers
+Inside the session manager, initialize the default response as a clean, requestless NextResponse.next() to prevent Deno proxy hangs, and bypass Supabase queries if the route is not an admin/login path or if environment variables are not found.
+
+Modify src/lib/supabase/middleware.ts:
+
+typescript
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+export async function updateSession(request: NextRequest) {
+  // 1. Initialize clean pass-through response without cloning the request object
+  let supabaseResponse = NextResponse.next()
+  const url = request.nextUrl.clone()
+  // 2. Extra safety check: Only run checks if they target admin/login routes
+  const isAdminRoute = url.pathname.startsWith('/admin/dashboard')
+  const isLoginRoute = url.pathname === '/login'
+  if (!isAdminRoute && !isLoginRoute) {
+    return supabaseResponse
+  }
+  // 3. Prevent crashes if environment variables are missing (e.g. during builds)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseKey || supabaseUrl === "undefined" || supabaseKey === "undefined" || !supabaseUrl.startsWith("http")) {
+    return supabaseResponse
+  }
+  // 4. Initialize Supabase SSR client
+  const supabase = createServerClient(
+    supabaseUrl,
+    supabaseKey,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+  // 5. Query user session from Supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  // 6. Security guards
+  if (isAdminRoute) {
+    if (!user || user.user_metadata?.role !== 'admin') {
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+  }
+  if (isLoginRoute && user && user.user_metadata?.role === 'admin') {
+    url.pathname = '/admin/dashboard'
+    return NextResponse.redirect(url)
+  }
+  return supabaseResponse
+}
+Step C: Secure Build-Time Page Prerendering (SSR/SSG Checks)
+During next build, Next.js compiles static HTML templates by running page client components in a server context. If you use Supabase hooks in client pages, Next.js executes createClient() during build-time (when the actual database environment variables are not available or are populated with string placeholders).
+
+Implement a robust configuration validator to return a dummy client during build-time prerendering.
+
+Modify src/lib/supabase/client.ts (Browser Client):
+
+typescript
+import { createBrowserClient } from '@supabase/ssr'
+// Validates credentials are real and formatted correctly
+function isValidSupabaseConfig(url?: string, key?: string) {
+  if (!url || !key) return false
+  if (url === "undefined" || key === "undefined") return false
+  if (url === "null" || key === "null") return false
+  if (url.includes("placeholder") || key.includes("placeholder")) return false
+  if (url.includes("<your-") || key.includes("<your-")) return false
+  if (!url.startsWith("http://") && !url.startsWith("https://")) return false
+  return true
+}
+export function createClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!isValidSupabaseConfig(url, key)) {
+    // Serves a safe dummy client during build-time static generation
+    return createBrowserClient(
+      "https://placeholder-project.supabase.co",
+      "placeholder-anon-key"
+    )
+  }
+  return createBrowserClient(url!, key!)
+}
+Apply the exact same isValidSupabaseConfig check inside your Server Client file: src/lib/supabase/server.ts.
