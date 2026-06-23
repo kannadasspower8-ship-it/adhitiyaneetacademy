@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   Calendar,
@@ -12,172 +12,25 @@ import {
   User,
   MapPin,
   Phone,
-  GraduationCap
+  GraduationCap,
+  ArrowLeft,
+  ChevronRight,
+  TrendingUp,
+  Award
 } from "lucide-react"
 import { toast } from "@/lib/toast"
+import { LineChart } from "@/components/shared/SVGCharts"
 import * as XLSX from "xlsx"
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ReferenceLine
-} from "recharts"
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return "N/A"
   try {
     const d = new Date(dateStr)
-    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
   } catch {
     return dateStr
   }
 }
-
-// ─── TOOLTIP AND CUSTOM RENDERING COMPONENTS ──────────────────────────────────
-
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: any[];
-  label?: string;
-}
-
-const CustomChartTooltip = ({ active, payload }: CustomTooltipProps) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload
-    return (
-      <div className="bg-[#0F172A] text-white p-3.5 rounded-xl shadow-lg border border-slate-800 text-xs space-y-1.5 min-w-[160px]">
-        <p className="font-bold text-slate-300 border-b border-slate-800 pb-1">{data.name}</p>
-        <p className="font-medium text-slate-400">Date: <span className="font-bold text-white">{data.date}</span></p>
-        {data.correct !== undefined && data.correct !== null && (
-          <p className="font-medium text-slate-400">Correct: <span className="font-extrabold text-[#10B981]">{data.correct}</span></p>
-        )}
-        {data.wrong !== undefined && data.wrong !== null && (
-          <p className="font-medium text-slate-400">Wrong: <span className="font-extrabold text-[#EF4444]">{data.wrong}</span></p>
-        )}
-        <p className="font-medium text-slate-400">Score: <span className="font-extrabold text-[#2563EB]">{data.score}/{data.max}</span></p>
-        <p className="font-medium text-slate-400">Percentage: <span className="font-extrabold text-[#F59E0B]">{data.pct}%</span></p>
-      </div>
-    )
-  }
-  return null
-}
-
-const renderCustomLineDot = (color: string) => {
-  return function CustomDot(props: any) {
-    const { cx, cy, payload } = props
-    if (!cx || !cy) return null
-    if (payload.isHighest) {
-      return (
-        <g key={payload.date + "-high"}>
-          <circle cx={cx} cy={cy} r={6.5} fill="#10B981" stroke="#FFFFFF" strokeWidth={2} />
-          <circle cx={cx} cy={cy} r={11} fill="none" stroke="#10B981" strokeWidth={1.5} className="animate-ping opacity-60" />
-        </g>
-      )
-    }
-    if (payload.isLowest) {
-      return (
-        <g key={payload.date + "-low"}>
-          <circle cx={cx} cy={cy} r={6.5} fill="#EF4444" stroke="#FFFFFF" strokeWidth={2} />
-          <circle cx={cx} cy={cy} r={11} fill="none" stroke="#EF4444" strokeWidth={1.5} className="animate-ping opacity-60" />
-        </g>
-      )
-    }
-    return (
-      <circle cx={cx} cy={cy} r={4} fill={color} stroke="#FFFFFF" strokeWidth={1.5} key={payload.date} />
-    )
-  }
-}
-
-interface ChartContainerProps {
-  title: string
-  data: any[]
-  children: React.ReactNode
-}
-
-function ChartContainer({ title, data, children }: ChartContainerProps) {
-  return (
-    <Card className="border-slate-100 bg-[#F8FAFC] shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xs font-bold text-slate-800 uppercase tracking-wider">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="p-4 pt-0">
-        {!data || data.length === 0 ? (
-          <div className="h-64 flex flex-col items-center justify-center text-slate-400 font-semibold text-xs bg-slate-50 border border-slate-100/50 rounded-xl">
-            <span>No test records to plot yet</span>
-          </div>
-        ) : data.length === 1 ? (
-          <div className="h-64 flex flex-col items-center justify-center text-slate-400 font-semibold text-xs bg-slate-50 border border-slate-100/50 rounded-xl p-4 text-center">
-            <span>More tests are required to generate a meaningful trend.</span>
-          </div>
-        ) : (
-          <div className="h-64 w-full">
-            {children}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-// ─── DATA NORMALIZATION HELPER ────────────────────────────────────────────────
-
-interface ProcessedDataResult {
-  data: any[]
-  maxVal: number
-  avgPlotted: number
-  avgPct: number
-}
-
-const processTestData = (tests: any[], defaultMax: number): ProcessedDataResult => {
-  if (tests.length === 0) {
-    return { data: [], maxVal: defaultMax, avgPlotted: 0, avgPct: 0 }
-  }
-
-  const maxVal = Math.max(...tests.map(d => d.max), defaultMax)
-  const minVal = Math.min(...tests.map(d => d.max), defaultMax)
-  const hasMixedMax = maxVal !== minVal
-
-  const totalScorePct = tests.reduce((sum, d) => sum + d.pct, 0)
-  const avgPct = totalScorePct / tests.length
-
-  const percentages = tests.map(d => d.pct)
-  const highestPct = Math.max(...percentages)
-  const lowestPct = Math.min(...percentages)
-
-  const processedData = tests.map(d => {
-    const plottedValue = hasMixedMax ? Math.round((d.score / d.max) * maxVal) : d.score
-    const isHighest = d.pct === highestPct
-    const isLowest = d.pct === lowestPct
-    return {
-      ...d,
-      plottedValue,
-      isHighest,
-      isLowest
-    }
-  })
-
-  const avgPlotted = hasMixedMax 
-    ? (avgPct / 100) * maxVal 
-    : tests.reduce((sum, d) => sum + d.score, 0) / tests.length
-
-  return {
-    data: processedData,
-    maxVal,
-    avgPlotted,
-    avgPct
-  }
-}
-
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function StudentDashboardPage() {
   const router = useRouter()
@@ -186,8 +39,9 @@ export default function StudentDashboardPage() {
   const [marks, setMarks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [activeSubject, setActiveSubject] = useState<string | null>(null) // null (home), biology, chemistry, physics, grand
 
-  // Load from local storage cache immediately if available
+  // Load cache immediately
   useEffect(() => {
     if (typeof window !== "undefined") {
       const cachedStudent = localStorage.getItem("student-portal-profile")
@@ -235,7 +89,7 @@ export default function StudentDashboardPage() {
 
   useEffect(() => {
     const hasCache = typeof window !== "undefined" && localStorage.getItem("student-portal-marks")
-    fetchStudentData(hasCache ? true : false)
+    fetchStudentData(!!hasCache)
   }, [fetchStudentData])
 
   const handleSignOut = async () => {
@@ -254,237 +108,137 @@ export default function StudentDashboardPage() {
     }
   }
 
-  // Computations
-  const stats = useMemo(() => {
-    if (marks.length === 0) return null
-
-    let totalScore = 0
-    let totalPercentage = 0
-    let highestScore = -999
-    let lowestScore = 999
-    
-    let totalCorrect = 0
-    let totalWrong = 0
-    let totalUnanswered = 0
-
-    // Subject Accumulators
-    let bioScore = 0, bioMax = 0
-    let chemScore = 0, chemMax = 0
-    let physScore = 0, physMax = 0
-
-    marks.forEach(m => {
-      const score = Number(m.total || 0)
-      const pct = Number(m.percentage || 0)
-      
-      totalScore += score
-      totalPercentage += pct
-      if (score > highestScore) highestScore = score
-      if (score < lowestScore) lowestScore = score
-
-      totalCorrect += Number(m.correct_answers || 0)
-      totalWrong += Number(m.wrong_answers || 0)
-      totalUnanswered += Number(m.unanswered_questions || 0)
-
-      const type = m.test_type || ""
-      if (type === "weekly_biology") {
-        bioScore += Number(m.biology || m.total || 0)
-        bioMax += Number(m.max_marks || 200)
-      } else if (type === "weekly_chemistry") {
-        chemScore += Number(m.chemistry || m.total || 0)
-        chemMax += Number(m.max_marks || 180)
-      } else if (type === "weekly_physics") {
-        physScore += Number(m.physics || m.total || 0)
-        physMax += Number(m.max_marks || 180)
-      } else if (type === "grand") {
-        bioScore += Number(m.biology || 0)
-        bioMax += 360
-
-        chemScore += Number(m.chemistry || 0)
-        chemMax += 180
-
-        physScore += Number(m.physics || 0)
-        physMax += 180
-      }
-    })
-
-    const avgScore = totalScore / marks.length
-    const avgPercentage = totalPercentage / marks.length
-
-    // Compile Line Data List Chronologically (reverse from history display order)
-    const sortedMarks = [...marks].sort((a, b) => new Date(a.test_date).getTime() - new Date(b.test_date).getTime())
-
-    const bioRaw = sortedMarks
-      .filter(m => m.test_type === "weekly_biology" || m.test_type === "grand")
-      .map(m => {
-        const score = Number(m.biology || (m.test_type === "weekly_biology" ? m.total : 0) || 0)
-        const max = m.test_type === "grand" ? 360 : Number(m.max_marks || 200)
-        const pct = max > 0 ? Math.round((score / max) * 100) : 0
-        return {
-          date: m.test_date ? formatDate(m.test_date) : "N/A",
-          score,
-          max,
-          pct,
-          name: m.test_name || "Biology Test",
-          correct: m.test_type === "grand" ? m.biology_correct : m.correct_answers,
-          wrong: m.test_type === "grand" ? null : m.wrong_answers
-        }
-      })
-
-    const chemRaw = sortedMarks
-      .filter(m => m.test_type === "weekly_chemistry" || m.test_type === "grand")
-      .map(m => {
-        const score = Number(m.chemistry || (m.test_type === "weekly_chemistry" ? m.total : 0) || 0)
-        const max = m.test_type === "grand" ? 180 : Number(m.max_marks || 180)
-        const pct = max > 0 ? Math.round((score / max) * 100) : 0
-        return {
-          date: m.test_date ? formatDate(m.test_date) : "N/A",
-          score,
-          max,
-          pct,
-          name: m.test_name || "Chemistry Test",
-          correct: m.test_type === "grand" ? m.chemistry_correct : m.correct_answers,
-          wrong: m.test_type === "grand" ? null : m.wrong_answers
-        }
-      })
-
-    const physRaw = sortedMarks
-      .filter(m => m.test_type === "weekly_physics" || m.test_type === "grand")
-      .map(m => {
-        const score = Number(m.physics || (m.test_type === "weekly_physics" ? m.total : 0) || 0)
-        const max = m.test_type === "grand" ? 180 : Number(m.max_marks || 180)
-        const pct = max > 0 ? Math.round((score / max) * 100) : 0
-        return {
-          date: m.test_date ? formatDate(m.test_date) : "N/A",
-          score,
-          max,
-          pct,
-          name: m.test_name || "Physics Test",
-          correct: m.test_type === "grand" ? m.physics_correct : m.correct_answers,
-          wrong: m.test_type === "grand" ? null : m.wrong_answers
-        }
-      })
-
-    const grandTests = sortedMarks
-      .filter(m => m.test_type === "grand")
-      .map(m => {
-        const score = Number(m.total || 0)
-        const max = Number(m.max_marks || 720)
-        const pct = max > 0 ? Math.round((score / max) * 100) : 0
-        return {
-          date: m.test_date ? formatDate(m.test_date) : "N/A",
-          score,
-          max,
-          pct,
-          name: m.test_name || "Grand Test"
-        }
-      })
-
-    // Process lists using scaling and highlight helpers
-    const bioResult = processTestData(bioRaw, 200)
-    const chemResult = processTestData(chemRaw, 180)
-    const physResult = processTestData(physRaw, 180)
-
-    const subjectList = [
-      { name: "Biology", pct: bioResult.avgPct, fill: "#2563EB" },
-      { name: "Chemistry", pct: chemResult.avgPct, fill: "#10B981" },
-      { name: "Physics", pct: physResult.avgPct, fill: "#F59E0B" }
-    ]
-    const sortedSubjects = [...subjectList].sort((a, b) => b.pct - a.pct)
-    const strongest = sortedSubjects[0].pct > 0 ? `${sortedSubjects[0].name} (${sortedSubjects[0].pct.toFixed(0)}%)` : "N/A"
-    const weakest = sortedSubjects[2].pct > 0 ? `${sortedSubjects[2].name} (${sortedSubjects[2].pct.toFixed(0)}%)` : "N/A"
-
-    let grandStats = { highest: 0, lowest: 0, avg: 0, latest: 0 }
-    if (grandTests.length > 0) {
-      const grandScores = grandTests.map(t => t.score)
-      const grandTotal = grandScores.reduce((sum, s) => sum + s, 0)
-      grandStats = {
-        highest: Math.max(...grandScores),
-        lowest: Math.min(...grandScores),
-        avg: Math.round(grandTotal / grandTests.length),
-        latest: grandScores[grandScores.length - 1]
-      }
-    }
-
-    let improvement = 0
-    if (marks.length > 1) {
-      const firstPct = Number(marks[0].percentage || 0)
-      const lastPct = Number(marks[marks.length - 1].percentage || 0)
-      improvement = lastPct - firstPct
-    }
-
-    // Peak accomplishment details
-    let bestTest = { name: "N/A", score: 0, max: 0, pct: 0 }
-    let bestPct = -1
-    marks.forEach(m => {
-      const pct = Number(m.percentage || 0)
-      if (pct > bestPct) {
-        bestPct = pct
-        bestTest = {
-          name: m.test_name || "Mock Test",
-          score: Number(m.total || 0),
-          max: Number(m.max_marks || 720),
-          pct
-        }
-      }
-    })
-
-    const latest = marks[marks.length - 1]
-    const latestScore = Number(latest.total || 0)
-    const latestMax = Number(latest.max_marks || 720)
-    const latestPct = Number(latest.percentage || 0)
-
-    return {
-      avgScore: Math.round(avgScore),
-      avgPercentage: Math.round(avgPercentage),
-      highestScore,
-      lowestScore,
-      totalCorrect,
-      totalWrong,
-      totalUnanswered,
-      strongest,
-      weakest,
-      bioTests: bioResult.data,
-      bioMax: bioResult.maxVal,
-      bioAvg: bioResult.avgPlotted,
-      bioAvgPct: bioResult.avgPct,
-      chemTests: chemResult.data,
-      chemMax: chemResult.maxVal,
-      chemAvg: chemResult.avgPlotted,
-      chemAvgPct: chemResult.avgPct,
-      physTests: physResult.data,
-      physMax: physResult.maxVal,
-      physAvg: physResult.avgPlotted,
-      physAvgPct: physResult.avgPct,
-      grandTests,
-      grandStats,
-      improvement,
-      latestScore,
-      latestMax,
-      latestPct,
-      bestTest,
-      subjectList
-    }
+  // Sort marks chronologically for trend processing
+  const sortedMarks = useMemo(() => {
+    return [...marks].sort((a, b) => new Date(a.test_date || 0).getTime() - new Date(b.test_date || 0).getTime())
   }, [marks])
 
+  // Group marks by category
+  const biologyTests = useMemo(() => sortedMarks.filter(m => m.test_type === "weekly_biology"), [sortedMarks])
+  const chemistryTests = useMemo(() => sortedMarks.filter(m => m.test_type === "weekly_chemistry"), [sortedMarks])
+  const physicsTests = useMemo(() => sortedMarks.filter(m => m.test_type === "weekly_physics"), [sortedMarks])
+  const grandTests = useMemo(() => sortedMarks.filter(m => m.test_type === "grand"), [sortedMarks])
+
+  // Get latest record helper
+  const getLatestRecord = (tests: any[]) => {
+    if (tests.length === 0) return null
+    return tests[tests.length - 1]
+  }
+
+  // Subject configurations for dashboard home
+  const subjectsConfig = useMemo(() => [
+    {
+      id: "biology",
+      name: "Biology",
+      icon: "🧬",
+      color: "from-emerald-500 to-teal-600",
+      bgLight: "bg-emerald-50 text-emerald-600",
+      tests: biologyTests,
+      max: 200,
+    },
+    {
+      id: "chemistry",
+      name: "Chemistry",
+      icon: "🧪",
+      color: "from-blue-500 to-indigo-600",
+      bgLight: "bg-blue-50 text-blue-600",
+      tests: chemistryTests,
+      max: 180,
+    },
+    {
+      id: "physics",
+      name: "Physics",
+      icon: "⚛️",
+      color: "from-amber-500 to-orange-600",
+      bgLight: "bg-amber-50 text-amber-600",
+      tests: physicsTests,
+      max: 180,
+    },
+    {
+      id: "grand",
+      name: "Grand Test",
+      icon: "🏆",
+      color: "from-purple-500 to-pink-600",
+      bgLight: "bg-purple-50 text-purple-600",
+      tests: grandTests,
+      max: 720,
+    }
+  ], [biologyTests, chemistryTests, physicsTests, grandTests])
+
+  // Selected subject details computations
+  const currentSubjectData = useMemo(() => {
+    if (!activeSubject) return null
+    const config = subjectsConfig.find(s => s.id === activeSubject)!
+    
+    // Process coordinates for the LineChart
+    const chartPoints = config.tests.map((m, idx) => {
+      const score = m.total || 0
+      const max = m.max_marks || config.max
+      const pct = m.percentage || (max > 0 ? Math.round((score / max) * 100) : 0)
+      return {
+        label: m.test_name || `${config.name} Test ${idx + 1}`,
+        value: score,
+        score,
+        maxMarks: max,
+        percentage: Math.round(pct),
+        date: m.test_date ? new Date(m.test_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "N/A"
+      }
+    })
+
+    // Calculate trend insight
+    let insight = "Stable"
+    const pcts = config.tests.map(t => t.percentage || 0)
+    const len = pcts.length
+    if (len >= 3) {
+      const recent = (pcts[len - 1] + pcts[len - 2]) / 2
+      const older = pcts.slice(0, len - 2).reduce((a, b) => a + b, 0) / (len - 2)
+      const diff = recent - older
+      if (diff > 4) insight = "Improving"
+      else if (diff < -4) insight = "Needs Improvement"
+    } else if (len === 2) {
+      const diff = pcts[1] - pcts[0]
+      if (diff > 4) insight = "Improving"
+      else if (diff < -4) insight = "Needs Improvement"
+    }
+
+    return {
+      config,
+      chartPoints,
+      insight,
+      historyList: [...config.tests].reverse() // show newest first in the list
+    }
+  }, [activeSubject, subjectsConfig])
+
+  // Export Excel
   const handleExportExcel = () => {
     if (marks.length === 0 || !student) {
-      alert("No marks records available to export.")
+      toast.error("No marks records available to export.")
       return
     }
 
-    const data = marks.map(m => ({
-      "Student Name": student.name,
-      "Correct Answers": m.correct_answers || 0,
-      "Wrong Answers": m.wrong_answers || 0,
-      "Unanswered Questions": m.unanswered_questions || 0,
-      "Score Obtained": m.total || 0,
-      "Percentage": m.percentage ? `${m.percentage}%` : "0%"
-    }))
+    const data = sortedMarks.map(m => {
+      const typeLabel = subjectsConfig.find(s => s.id === m.test_type?.replace("weekly_", ""))?.name || m.test_type
+      return {
+        "Student Name": student.name,
+        "Test Name": m.test_name || "N/A",
+        "Subject/Type": typeLabel,
+        "Test Date": m.test_date ? formatDate(m.test_date) : "N/A",
+        "Correct Answers": m.correct_answers || 0,
+        "Wrong Answers": m.wrong_answers || 0,
+        "Unanswered Questions": m.unanswered_questions || 0,
+        "Score Obtained": m.total || 0,
+        "Maximum Marks": m.max_marks || 0,
+        "Percentage": m.percentage ? `${m.percentage}%` : "0%",
+        "Grade": m.performance || "N/A"
+      }
+    })
 
     const ws = XLSX.utils.json_to_sheet(data)
+    ws["!cols"] = [{ wch: 20 }, { wch: 24 }, { wch: 15 }, { wch: 15 }, { wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }]
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "My Report")
-    XLSX.writeFile(wb, `${student.name.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_report.xlsx`)
+    XLSX.utils.book_append_sheet(wb, ws, "NEET Performance Report")
+    XLSX.writeFile(wb, `${student.name.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_neet_report.xlsx`)
+    toast.success("Excel report downloaded successfully!")
   }
 
   if (loading) {
@@ -512,7 +266,7 @@ export default function StudentDashboardPage() {
 
   return (
     <div className="min-h-screen bg-white text-[#0F172A] font-sans flex flex-col">
-      {/* Student Portal Dedicated Header */}
+      {/* Header */}
       <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 sticky top-0 z-30 shadow-sm shadow-slate-100/50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#2563EB] flex items-center justify-center text-white shadow-md shadow-blue-500/10">
@@ -524,416 +278,245 @@ export default function StudentDashboardPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="hidden md:inline text-xs font-semibold text-slate-550">
-            Welcome back, <span className="text-slate-850 font-bold">{student.name}</span>!
-          </span>
-
-          <div className="flex gap-2">
-            {stats && (
-              <Button
-                onClick={handleExportExcel}
-                variant="outline"
-                className="h-10 border-slate-200 hover:bg-[#F8FAFC] text-slate-700 font-bold text-xs rounded-xl flex items-center gap-2"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Download My Report
-              </Button>
-            )}
+        <div className="flex items-center gap-2">
+          {marks.length > 0 && (
             <Button
-              onClick={handleSignOut}
+              onClick={handleExportExcel}
               variant="outline"
-              className="h-10 border-slate-200 hover:bg-red-50 hover:text-[#EF4444] hover:border-red-200 font-bold text-xs rounded-xl flex items-center gap-2"
+              className="h-10 border-slate-200 hover:bg-[#F8FAFC] text-slate-700 font-bold text-xs rounded-xl flex items-center gap-2"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              Logout
+              <Download className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">Download Report</span>
             </Button>
-          </div>
+          )}
+          <Button
+            onClick={handleSignOut}
+            variant="outline"
+            className="h-10 border-slate-200 hover:bg-red-50 hover:text-[#EF4444] hover:border-red-200 font-bold text-xs rounded-xl flex items-center gap-2"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Logout</span>
+          </Button>
         </div>
       </header>
 
-      {/* Portal Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-5 space-y-6">
+      {/* Main Container */}
+      <main className="flex-grow max-w-5xl w-full mx-auto p-5 space-y-6">
 
-        {/* 1. TOP STUDENT INFO CARDS (Profile summary) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-[#F8FAFC] border border-slate-105 rounded-2xl p-4 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center shrink-0 border border-blue-100/50">
-              <User className="w-5 h-5" />
+        {/* ─── DASHBOARD HOME VIEW ─── */}
+        {!activeSubject ? (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Student Header Info */}
+            <div className="bg-gradient-to-r from-slate-900 to-slate-850 text-white rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-xl shadow-slate-900/10">
+              <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none translate-x-12 translate-y-12">
+                <GraduationCap className="w-64 h-64" />
+              </div>
+              <div className="relative z-10 space-y-5">
+                <div className="space-y-1">
+                  <span className="text-[10px] px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 font-bold uppercase tracking-widest">
+                    Student Portal
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-black tracking-tight mt-3">{student.name}</h2>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-800">
+                  <div>
+                    <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider block">Student ID</span>
+                    <code className="text-slate-200 font-bold text-sm">{student.student_id}</code>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider block">Enrolled Batch</span>
+                    <span className="text-slate-200 font-bold text-sm">{student.batch}</span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider block">Registered Mobile</span>
+                    <span className="text-slate-200 font-bold text-sm">{student.phone}</span>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {/* Title */}
             <div>
-              <span className="text-slate-450 font-bold uppercase tracking-wider block text-[9px]">Student ID</span>
-              <code className="text-[#0F172A] font-extrabold text-[13px]">{student.student_id}</code>
-            </div>
-          </div>
-          
-          <div className="bg-[#F8FAFC] border border-slate-105 rounded-2xl p-4 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center shrink-0 border border-blue-100/50">
-              <Phone className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-slate-450 font-bold uppercase tracking-wider block text-[9px]">Mobile Number</span>
-              <span className="text-[#0F172A] font-extrabold text-sm">{student.phone}</span>
-            </div>
-          </div>
-
-          <div className="bg-[#F8FAFC] border border-slate-105 rounded-2xl p-4 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center shrink-0 border border-blue-100/50">
-              <MapPin className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-slate-450 font-bold uppercase tracking-wider block text-[9px]">Location</span>
-              <span className="text-[#0F172A] font-extrabold text-sm">{student.place || "N/A"}</span>
-            </div>
-          </div>
-
-          <div className="bg-[#F8FAFC] border border-slate-105 rounded-2xl p-4 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center shrink-0 border border-blue-100/50">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-slate-455 font-bold uppercase tracking-wider block text-[9px]">Month of Joining</span>
-              <span className="text-[#0F172A] font-extrabold text-sm">{student.month_of_joining || "N/A"}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Analytics Section */}
-        {marks.length === 0 ? (
-          <div className="py-16 bg-[#F8FAFC] border border-dashed border-slate-200 rounded-2xl text-center text-slate-400 font-bold text-xs uppercase tracking-wider">
-            No test scores recorded yet. Your academic data will populate here when administrative marks are published.
-          </div>
-        ) : stats ? (
-          <>
-            {/* 2. SUMMARY METRICS CARDS */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-              <Card className="border-slate-100 bg-[#F8FAFC] shadow-sm">
-                <CardContent className="p-4 flex flex-col justify-between h-full min-h-[90px]">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Total Score</span>
-                  <div className="mt-1">
-                    <h3 className="text-xl font-extrabold text-[#0F172A] leading-none">{stats.latestScore} <span className="text-[10px] text-slate-400 font-medium">/ {stats.latestMax}</span></h3>
-                    <span className="text-[10px] font-bold text-[#2563EB] block mt-1">{stats.latestPct}% Rate</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-slate-100 bg-[#F8FAFC] shadow-sm">
-                <CardContent className="p-4 flex flex-col justify-between h-full min-h-[90px]">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Highest Score</span>
-                  <div className="mt-1">
-                    <h3 className="text-xl font-extrabold text-emerald-650 leading-none">{stats.highestScore}</h3>
-                    <span className="text-[10px] font-semibold text-slate-400 block mt-1">Best logged performance</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-slate-100 bg-[#F8FAFC] shadow-sm">
-                <CardContent className="p-4 flex flex-col justify-between h-full min-h-[90px]">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Average Score</span>
-                  <div className="mt-1">
-                    <h3 className="text-xl font-extrabold text-[#0F172A] leading-none">{stats.avgScore}</h3>
-                    <span className="text-[10px] font-bold text-[#1D4ED8] block mt-1">{stats.avgPercentage}% Avg rate</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-slate-100 bg-[#F8FAFC] shadow-sm">
-                <CardContent className="p-4 flex flex-col justify-between h-full min-h-[90px]">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Improvement</span>
-                  <div className="mt-1">
-                    <h3 className={`text-xl font-extrabold leading-none ${stats.improvement >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                      {stats.improvement >= 0 ? `+${stats.improvement.toFixed(1)}%` : `${stats.improvement.toFixed(1)}%`}
-                    </h3>
-                    <span className="text-[10px] font-semibold text-slate-400 block mt-1">Growth since first test</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-slate-100 bg-[#F8FAFC] shadow-sm col-span-1">
-                <CardContent className="p-4 flex flex-col justify-between h-full min-h-[90px]">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Subject Strength</span>
-                  <div className="mt-1">
-                    <h3 className="text-[13px] font-extrabold text-emerald-600 truncate">{stats.strongest}</h3>
-                    <span className="text-[9px] font-semibold text-slate-400 block mt-1">Highest mastery rating</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-slate-100 bg-[#F8FAFC] shadow-sm col-span-1">
-                <CardContent className="p-4 flex flex-col justify-between h-full min-h-[90px]">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Subject Weakness</span>
-                  <div className="mt-1">
-                    <h3 className="text-[13px] font-extrabold text-[#EF4444] truncate">{stats.weakest}</h3>
-                    <span className="text-[9px] font-semibold text-slate-400 block mt-1">Requires target revision</span>
-                  </div>
-                </CardContent>
-              </Card>
+              <h3 className="text-base font-extrabold text-slate-800 uppercase tracking-wider">Subject Performance Reviews</h3>
+              <p className="text-slate-450 text-xs">Select any subject category below to review complete test history and progress trends.</p>
             </div>
 
-            {/* 3. GRAPHICAL ANALYTICS SECTION */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Biology Performance Chart */}
-              <ChartContainer title="Biology Performance Trend" data={stats.bioTests}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={stats.bioTests} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                    <XAxis dataKey="date" tick={{ fill: '#64748B', fontSize: 10, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, stats.bioMax]} tick={{ fill: '#64748B', fontSize: 10, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomChartTooltip />} />
-                    <ReferenceLine 
-                      y={stats.bioAvg} 
-                      stroke="#94A3B8" 
-                      strokeDasharray="3 3" 
-                      label={{ value: `Avg (${stats.bioAvgPct.toFixed(0)}%)`, fill: '#64748B', fontSize: 9, position: 'insideBottomLeft', fontWeight: 'bold' }} 
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="plottedValue" 
-                      stroke="#2563EB" 
-                      strokeWidth={3} 
-                      dot={renderCustomLineDot("#2563EB")} 
-                      activeDot={{ r: 6, stroke: '#FFFFFF', strokeWidth: 2 }} 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
+            {/* 4 Subject Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {subjectsConfig.map(sub => {
+                const latest = getLatestRecord(sub.tests)
+                const latestScore = latest ? `${latest.total} / ${latest.max_marks || sub.max}` : "No tests recorded"
+                const latestPct = latest ? `(${latest.percentage}%)` : ""
 
-              {/* Chemistry Performance Chart */}
-              <ChartContainer title="Chemistry Performance Trend" data={stats.chemTests}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={stats.chemTests} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                    <XAxis dataKey="date" tick={{ fill: '#64748B', fontSize: 10, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, stats.chemMax]} tick={{ fill: '#64748B', fontSize: 10, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomChartTooltip />} />
-                    <ReferenceLine 
-                      y={stats.chemAvg} 
-                      stroke="#94A3B8" 
-                      strokeDasharray="3 3" 
-                      label={{ value: `Avg (${stats.chemAvgPct.toFixed(0)}%)`, fill: '#64748B', fontSize: 9, position: 'insideBottomLeft', fontWeight: 'bold' }} 
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="plottedValue" 
-                      stroke="#10B981" 
-                      strokeWidth={3} 
-                      dot={renderCustomLineDot("#10B981")} 
-                      activeDot={{ r: 6, stroke: '#FFFFFF', strokeWidth: 2 }} 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-
-              {/* Physics Performance Chart */}
-              <ChartContainer title="Physics Performance Trend" data={stats.physTests}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={stats.physTests} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                    <XAxis dataKey="date" tick={{ fill: '#64748B', fontSize: 10, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, stats.physMax]} tick={{ fill: '#64748B', fontSize: 10, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomChartTooltip />} />
-                    <ReferenceLine 
-                      y={stats.physAvg} 
-                      stroke="#94A3B8" 
-                      strokeDasharray="3 3" 
-                      label={{ value: `Avg (${stats.physAvgPct.toFixed(0)}%)`, fill: '#64748B', fontSize: 9, position: 'insideBottomLeft', fontWeight: 'bold' }} 
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="plottedValue" 
-                      stroke="#F59E0B" 
-                      strokeWidth={3} 
-                      dot={renderCustomLineDot("#F59E0B")} 
-                      activeDot={{ r: 6, stroke: '#FFFFFF', strokeWidth: 2 }} 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-
-              {/* Overall Grand Test Progression */}
-              <Card className="border-slate-100 bg-[#F8FAFC] shadow-sm hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <CardTitle className="text-xs font-bold text-slate-800 uppercase tracking-wider">Overall Grand Test Progression</CardTitle>
-                    {stats.grandTests.length > 1 && (
-                      <div className="flex flex-wrap gap-3 text-[10px] font-bold">
-                        <span className="text-emerald-600">Peak: {stats.grandStats.highest}</span>
-                        <span className="text-rose-600">Lowest: {stats.grandStats.lowest}</span>
-                        <span className="text-[#2563EB]">Avg: {stats.grandStats.avg}</span>
-                        <span className="text-slate-700">Latest: {stats.grandStats.latest}</span>
+                return (
+                  <Card key={sub.id} className="border-slate-200 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all bg-white rounded-2xl overflow-hidden flex flex-col justify-between h-44 p-5">
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
+                          <span className="text-xl">{sub.icon}</span>
+                          {sub.name}
+                        </h4>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{sub.tests.length} test{sub.tests.length !== 1 ? "s" : ""}</span>
                       </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
-                  {stats.grandTests.length === 0 ? (
-                    <div className="h-64 flex flex-col items-center justify-center text-slate-400 font-semibold text-xs bg-slate-50 border border-slate-100/50 rounded-xl">
-                      <span>No grand test records available yet</span>
-                    </div>
-                  ) : stats.grandTests.length === 1 ? (
-                    <div className="h-64 flex flex-col items-center justify-center text-slate-400 font-semibold text-xs bg-slate-50 border border-slate-100/50 rounded-xl p-4 text-center">
-                      <span>More tests are required to generate a meaningful trend.</span>
-                    </div>
-                  ) : (
-                    <div className="h-64 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={stats.grandTests} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="colorGrand" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#2563EB" stopOpacity={0.2}/>
-                              <stop offset="95%" stopColor="#2563EB" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                          <XAxis dataKey="date" tick={{ fill: '#64748B', fontSize: 10, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
-                          <YAxis domain={[0, 720]} tick={{ fill: '#64748B', fontSize: 10, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
-                          <Tooltip content={<CustomChartTooltip />} />
-                          <ReferenceLine 
-                            y={stats.grandStats.avg} 
-                            stroke="#94A3B8" 
-                            strokeDasharray="3 3" 
-                            label={{ value: `Avg (${stats.grandStats.avg})`, fill: '#64748B', fontSize: 9, position: 'insideBottomLeft', fontWeight: 'bold' }} 
-                          />
-                          <Area type="monotone" dataKey="score" stroke="#2563EB" strokeWidth={3} fillOpacity={1} fill="url(#colorGrand)" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Subject Strength Comparison (Horizontal Bar Chart) */}
-              <Card className="border-slate-105 bg-[#F8FAFC] shadow-sm hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-bold text-slate-800 uppercase tracking-wider">Subject Strength Comparison</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={stats.subjectList} layout="vertical" margin={{ top: 15, right: 20, left: -10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false} />
-                        <XAxis type="number" domain={[0, 100]} tickFormatter={(val) => `${val}%`} tick={{ fill: '#64748B', fontSize: 10, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
-                        <YAxis dataKey="name" type="category" tick={{ fill: '#475569', fontSize: 11, fontWeight: 'bold' }} axisLine={false} tickLine={false} width={80} />
-                        <Tooltip formatter={(value: any) => [`${Number(value).toFixed(1)}%`, 'Average Score']} />
-                        <Bar dataKey="pct" radius={[0, 6, 6, 0]} barSize={24}>
-                          {stats.subjectList.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Dynamic Performance Insights Card */}
-              <Card className="border-slate-105 bg-[#F8FAFC] shadow-sm hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-bold text-slate-800 uppercase tracking-wider">Academic Performance Insights</CardTitle>
-                </CardHeader>
-                <CardContent className="p-5 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white p-3.5 rounded-xl border border-slate-100/50 shadow-sm shadow-slate-100/30">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Strongest Subject</span>
-                      <div className="text-xs font-extrabold text-[#2563EB] mt-1">{stats.strongest}</div>
-                    </div>
-                    <div className="bg-white p-3.5 rounded-xl border border-slate-100/50 shadow-sm shadow-slate-100/30">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Weakest Subject</span>
-                      <div className="text-xs font-extrabold text-[#EF4444] mt-1">{stats.weakest}</div>
-                    </div>
-                    <div className="bg-white p-3.5 rounded-xl border border-slate-100/50 shadow-sm shadow-slate-100/30">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Average Performance</span>
-                      <div className="text-xs font-extrabold text-slate-800 mt-1">{stats.avgPercentage}%</div>
-                    </div>
-                    <div className="bg-white p-3.5 rounded-xl border border-slate-100/50 shadow-sm shadow-slate-100/30">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Overall Improvement</span>
-                      <div className={`text-xs font-extrabold mt-1 ${stats.improvement >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                        {stats.improvement >= 0 ? `+${stats.improvement.toFixed(1)}%` : `${stats.improvement.toFixed(1)}%`}
+                      <div className="mt-4">
+                        <span className="text-slate-400 text-[9px] font-bold uppercase tracking-wider block">Latest Marks</span>
+                        <div className="text-lg font-black text-slate-850 mt-1 flex items-baseline gap-1.5">
+                          {latestScore}
+                          {latestPct && <span className="text-xs font-bold text-[#2563EB]">{latestPct}</span>}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="bg-white p-3.5 rounded-xl border border-slate-100/50 shadow-sm shadow-slate-100/30">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Peak Accomplishment</span>
-                    <div className="text-xs font-extrabold text-slate-800 mt-1">{stats.bestTest.name}</div>
-                    <div className="text-[10px] font-semibold text-[#10B981] mt-0.5">
-                      Score: {stats.bestTest.score}/{stats.bestTest.max} ({stats.bestTest.pct}%)
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
 
+                    <Button
+                      onClick={() => setActiveSubject(sub.id)}
+                      variant="outline"
+                      className="w-full h-10 border-slate-200 hover:border-blue-300 hover:text-[#2563EB] font-bold text-xs rounded-xl flex items-center justify-center gap-1.5"
+                    >
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      View Details
+                    </Button>
+                  </Card>
+                )
+              })}
+            </div>
+          </div>
+        ) : (
+          /* ─── SUBJECT DETAIL VIEW ─── */
+          <div className="space-y-6 animate-fadeIn">
+            {/* Back Bar */}
+            <div>
+              <button
+                onClick={() => setActiveSubject(null)}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors bg-slate-100 hover:bg-slate-200 px-3.5 py-2.5 rounded-xl"
+              >
+                <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+              </button>
             </div>
 
-            {/* 4. STUDENT HISTORY TABLE */}
-            <Card className="border-slate-200 bg-white shadow-sm overflow-hidden">
-              <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50">
-                <CardTitle className="text-sm font-bold text-slate-800">My Complete Academic Performance History</CardTitle>
-                <CardDescription className="text-[11px]">List registry of all weekly and monthly mock NEET exams.</CardDescription>
+            {/* Subject Details Header */}
+            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-extrabold text-slate-950 flex items-center gap-2">
+                  <span className="text-2xl">{currentSubjectData?.config.icon}</span>
+                  {currentSubjectData?.config.name} Performance details
+                </h2>
+                <p className="text-xs text-slate-550 mt-1">
+                  Timeline review for <span className="font-bold">{student.name}</span> ({student.batch})
+                </p>
+              </div>
+            </div>
+
+            {/* 1. Dynamic Performance Graph */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-extrabold text-slate-450 uppercase tracking-wider">Performance Progress Trend</h3>
+              <div className="w-full">
+                <LineChart 
+                  data={currentSubjectData?.chartPoints || []} 
+                  maxVal={currentSubjectData?.config.max} 
+                  height={220} 
+                />
+              </div>
+            </div>
+
+            {/* 2. Performance Insight Card */}
+            <Card className="border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-bold text-slate-800 uppercase tracking-wider">Current Performance Insight</CardTitle>
               </CardHeader>
-              <CardContent className="p-0 overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50/20 border-b border-slate-100 font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="py-3 px-4">Test Date</th>
-                      <th className="py-3 px-4">Test Name</th>
-                      <th className="py-3 px-4">Test Type</th>
-                      <th className="py-3 px-4 text-center">Correct</th>
-                      <th className="py-3 px-4 text-center">Wrong</th>
-                      <th className="py-3 px-4 text-center">Blank</th>
-                      <th className="py-3 px-4 text-center">Score Obtained</th>
-                      <th className="py-3 px-4 text-center">Percentage</th>
-                      <th className="py-3 px-4 text-center">Performance</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-150/70 text-slate-700">
-                    {[...marks].reverse().map(m => (
-                      <tr key={m.id} className="hover:bg-slate-50/30 transition-colors">
-                        <td className="py-3.5 px-4 font-semibold text-slate-400 whitespace-nowrap">
-                          {m.test_date ? new Date(m.test_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "N/A"}
-                        </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-800 whitespace-nowrap">
-                          {m.test_name || "N/A"}
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap uppercase text-[10px] font-bold text-slate-400">
-                          {m.test_type?.replace("weekly_", "") || "N/A"}
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-[#10B981]">
-                          {m.correct_answers}
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-[#EF4444]">
-                          {m.wrong_answers}
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-semibold text-slate-400">
-                          {m.unanswered_questions}
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-slate-800 whitespace-nowrap">
-                          {m.total} <span className="text-[10px] font-medium text-slate-450">/ {m.max_marks}</span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-[#2563EB]">
-                          {m.percentage}%
-                        </td>
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                            m.performance === "Excellent"
-                              ? "bg-emerald-50 border-emerald-250 text-emerald-700"
-                              : m.performance === "Good"
-                              ? "bg-blue-50 border-blue-200 text-[#2563EB]"
-                              : m.performance === "Average"
-                              ? "bg-amber-50 border-amber-250 text-amber-700"
-                              : "bg-red-50 border-red-250 text-[#EF4444]"
-                          }`}>
-                            {m.performance || "Average"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <CardContent className="pb-5">
+                <div className={`p-4 rounded-xl border flex items-center gap-3.5 ${
+                  currentSubjectData?.insight === "Improving"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                    : currentSubjectData?.insight === "Needs Improvement"
+                    ? "bg-rose-50 border-rose-200 text-rose-800"
+                    : "bg-slate-50 border-slate-200 text-slate-800"
+                }`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                    currentSubjectData?.insight === "Improving"
+                      ? "bg-emerald-100 text-emerald-600"
+                      : currentSubjectData?.insight === "Needs Improvement"
+                      ? "bg-rose-100 text-rose-600"
+                      : "bg-slate-200 text-slate-600"
+                  }`}>
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold tracking-wider block text-slate-450">Trend Rating</span>
+                    <h4 className="text-sm font-black mt-0.5">
+                      {currentSubjectData?.insight === "Improving" && "🎉 Continuous Performance Improvement"}
+                      {currentSubjectData?.insight === "Needs Improvement" && "⚠️ Academic Shading: Target Revision Recommended"}
+                      {currentSubjectData?.insight === "Stable" && "⚖️ Stable Performance Range"}
+                    </h4>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          </>
-        ) : null}
+
+            {/* 3. Biology/Chemistry/Physics/Grand Test History Table */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-extrabold text-slate-450 uppercase tracking-wider">{currentSubjectData?.config.name} Exam History Register</h3>
+              <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-150 font-bold text-slate-500 uppercase tracking-wider text-[10px]">
+                        <th className="py-3 px-4">Date</th>
+                        <th className="py-3 px-4">Test Name</th>
+                        <th className="py-3 px-4 text-center">Correct</th>
+                        <th className="py-3 px-4 text-center">Wrong</th>
+                        <th className="py-3 px-4 text-center">Blank</th>
+                        <th className="py-3 px-4 text-center">Marks Obtained</th>
+                        <th className="py-3 px-4 text-center">Percentage</th>
+                        <th className="py-3 px-4 text-center">Grade</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {currentSubjectData?.historyList.map((m, idx) => (
+                        <tr key={m.id} className="hover:bg-slate-50/20 transition-colors">
+                          <td className="py-3 px-4 font-semibold text-slate-400 whitespace-nowrap">
+                            {m.test_date ? formatDate(m.test_date) : "—"}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-slate-800 whitespace-nowrap">
+                            {m.test_name || "N/A"}
+                          </td>
+                          <td className="py-3 px-4 text-center font-bold text-[#10B981]">
+                            {m.correct_answers}
+                          </td>
+                          <td className="py-3 px-4 text-center font-bold text-[#EF4444]">
+                            {m.wrong_answers}
+                          </td>
+                          <td className="py-3 px-4 text-center font-semibold text-slate-400">
+                            {m.unanswered_questions}
+                          </td>
+                          <td className="py-3 px-4 text-center font-bold text-slate-800 whitespace-nowrap">
+                            {m.total} <span className="text-[10px] font-medium text-slate-400">/ {m.max_marks || currentSubjectData.config.max}</span>
+                          </td>
+                          <td className="py-3 px-4 text-center font-bold text-[#2563EB]">
+                            {m.percentage}%
+                          </td>
+                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              m.performance === "Excellent"
+                                ? "bg-emerald-50 border-emerald-250 text-emerald-700"
+                                : m.performance === "Good"
+                                ? "bg-blue-50 border-blue-200 text-[#2563EB]"
+                                : m.performance === "Average"
+                                ? "bg-amber-50 border-amber-250 text-amber-700"
+                                : "bg-red-50 border-red-250 text-[#EF4444]"
+                            }`}>
+                              {m.performance || "Average"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )

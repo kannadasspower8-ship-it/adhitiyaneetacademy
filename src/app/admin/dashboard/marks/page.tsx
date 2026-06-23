@@ -91,20 +91,14 @@ type ViewMode = "registry" | "wizard-batch" | "wizard-type" | "spreadsheet" | "v
 
 function calcRow(row: StudentRow, testType: string): StudentRow {
   const r = { ...row }
-  if (testType === "grand") {
-    const totalCorrect = Number(r.biologyCorrect) + Number(r.chemistryCorrect) + Number(r.physicsCorrect)
-    r.score = (totalCorrect * 4) - Number(r.totalWrong)
-    r.unanswered = 180 - (totalCorrect + Number(r.totalWrong))
-    r.maxMarks = 720
-    r.percentage = r.maxMarks > 0 ? (r.score / r.maxMarks) * 100 : 0
-  } else {
-    const totalQ = testType === "weekly_biology" ? 50 : 45
-    const maxM = testType === "weekly_biology" ? 200 : 180
-    r.score = (Number(r.correctAnswers) * 4) - Number(r.wrongAnswers)
-    r.unanswered = totalQ - (Number(r.correctAnswers) + Number(r.wrongAnswers))
-    r.maxMarks = maxM
-    r.percentage = maxM > 0 ? (r.score / maxM) * 100 : 0
-  }
+  const totalQ = testType === "grand" ? 180 : testType === "weekly_biology" ? 50 : 45
+  const maxM = testType === "grand" ? 720 : testType === "weekly_biology" ? 200 : 180
+
+  r.score = (Number(r.correctAnswers) * 4) - Number(r.wrongAnswers)
+  r.unanswered = totalQ - (Number(r.correctAnswers) + Number(r.wrongAnswers))
+  r.maxMarks = maxM
+  r.percentage = maxM > 0 ? (r.score / maxM) * 100 : 0
+
   if (r.percentage < 0) r.percentage = 0
   if (r.score < 0) r.score = 0
   return r
@@ -237,11 +231,6 @@ export default function MarksRegistryPage() {
     setViewMode("wizard-batch")
   }
 
-  const selectBatch = (b: string) => {
-    setSelectedBatch(b)
-    setViewMode("wizard-type")
-  }
-
   const selectTestType = (t: string) => {
     setSelectedTestType(t)
     const info = testTypeOptions.find(o => o.value === t)!
@@ -307,10 +296,8 @@ export default function MarksRegistryPage() {
     const info = testTypeOptions.find(t => t.value === selectedTestType)!
     const exportRows = rows.map(r => ({
       name: r.name,
-      correct: selectedTestType === "grand"
-        ? Number(r.biologyCorrect) + Number(r.chemistryCorrect) + Number(r.physicsCorrect)
-        : Number(r.correctAnswers),
-      wrong: selectedTestType === "grand" ? Number(r.totalWrong) : Number(r.wrongAnswers),
+      correct: Number(r.correctAnswers),
+      wrong: Number(r.wrongAnswers),
       unanswered: r.unanswered,
       score: r.score,
       percentage: r.percentage
@@ -322,10 +309,7 @@ export default function MarksRegistryPage() {
   // ─── Save Test Record ──────────────────────────────────────────────────
 
   const handleSaveTestRecord = async () => {
-    const filledRows = rows.filter(r => {
-      if (selectedTestType === "grand") return r.biologyCorrect > 0 || r.chemistryCorrect > 0 || r.physicsCorrect > 0 || r.totalWrong > 0
-      return r.correctAnswers > 0 || r.wrongAnswers > 0
-    })
+    const filledRows = rows.filter(r => r.correctAnswers > 0 || r.wrongAnswers > 0)
 
     if (filledRows.length === 0) {
       toast.error("Please enter marks for at least one student.")
@@ -356,20 +340,10 @@ export default function MarksRegistryPage() {
       let successCount = 0
       for (const row of filledRows) {
         const c = calcRow(row, selectedTestType)
-        let bio = 0, chem = 0, phys = 0
+        let bio = null, chem = null, phys = null
         if (selectedTestType === "weekly_biology") bio = c.score
         else if (selectedTestType === "weekly_chemistry") chem = c.score
         else if (selectedTestType === "weekly_physics") phys = c.score
-        else {
-          bio = Number(row.biologyCorrect) * 4
-          chem = Number(row.chemistryCorrect) * 4
-          phys = Number(row.physicsCorrect) * 4
-        }
-
-        const totalCorrect = selectedTestType === "grand"
-          ? Number(row.biologyCorrect) + Number(row.chemistryCorrect) + Number(row.physicsCorrect)
-          : Number(row.correctAnswers)
-        const totalWrong = selectedTestType === "grand" ? Number(row.totalWrong) : Number(row.wrongAnswers)
 
         const { error } = await supabase.from("student_marks").insert({
           student_id: row.id,
@@ -380,14 +354,14 @@ export default function MarksRegistryPage() {
           total: c.score,
           percentage: Number(c.percentage.toFixed(2)),
           performance: getGrading(c.percentage),
-          correct_answers: totalCorrect,
-          wrong_answers: totalWrong,
+          correct_answers: Number(row.correctAnswers),
+          wrong_answers: Number(row.wrongAnswers),
           unanswered_questions: c.unanswered,
           max_marks: c.maxMarks,
-          biology_correct: selectedTestType === "grand" ? Number(row.biologyCorrect) : null,
-          chemistry_correct: selectedTestType === "grand" ? Number(row.chemistryCorrect) : null,
-          physics_correct: selectedTestType === "grand" ? Number(row.physicsCorrect) : null,
-          total_wrong: selectedTestType === "grand" ? Number(row.totalWrong) : null
+          biology_correct: null,
+          chemistry_correct: null,
+          physics_correct: null,
+          total_wrong: null
         })
 
         if (!error) {
@@ -651,19 +625,8 @@ export default function MarksRegistryPage() {
                     <tr className="bg-slate-50 border-b-2 border-slate-200">
                       <th className="text-left py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider w-10">#</th>
                       <th className="text-left py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider min-w-[150px]">Student Name</th>
-                      {!isGrand ? (
-                        <>
-                          <th className="text-center py-3 px-3 font-bold text-emerald-600 text-[11px] uppercase tracking-wider min-w-[120px]">Correct Answers</th>
-                          <th className="text-center py-3 px-3 font-bold text-red-500 text-[11px] uppercase tracking-wider min-w-[120px]">Wrong Answers</th>
-                        </>
-                      ) : (
-                        <>
-                          <th className="text-center py-3 px-3 font-bold text-green-600 text-[11px] uppercase tracking-wider min-w-[100px]">Bio Correct</th>
-                          <th className="text-center py-3 px-3 font-bold text-cyan-600 text-[11px] uppercase tracking-wider min-w-[100px]">Chem Correct</th>
-                          <th className="text-center py-3 px-3 font-bold text-orange-600 text-[11px] uppercase tracking-wider min-w-[100px]">Phys Correct</th>
-                          <th className="text-center py-3 px-3 font-bold text-red-500 text-[11px] uppercase tracking-wider min-w-[100px]">Wrong Answers</th>
-                        </>
-                      )}
+                      <th className="text-center py-3 px-3 font-bold text-emerald-600 text-[11px] uppercase tracking-wider min-w-[120px]">Correct Answers</th>
+                      <th className="text-center py-3 px-3 font-bold text-red-500 text-[11px] uppercase tracking-wider min-w-[120px]">Wrong Answers</th>
                       <th className="text-center py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider min-w-[110px]">Unanswered</th>
                       <th className="text-center py-3 px-3 font-bold text-blue-600 text-[11px] uppercase tracking-wider min-w-[100px]">Score</th>
                       <th className="text-center py-3 px-3 font-bold text-indigo-600 text-[11px] uppercase tracking-wider min-w-[100px]">Percentage</th>
@@ -684,61 +647,22 @@ export default function MarksRegistryPage() {
                           {row.error && <span className="text-[10px] text-red-500 block font-medium">Error: {row.error}</span>}
                         </td>
 
-                        {!isGrand ? (
-                          <>
-                            <td className="py-2 px-2 text-center">
-                              <input type="number" min="0" max={testInfo?.totalQ || 50}
-                                value={row.correctAnswers || ""}
-                                onChange={e => updateRow(idx, "correctAnswers", Number(e.target.value))}
-                                disabled={row.saved || saving} placeholder="0"
-                                className="w-full max-w-[80px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400 mx-auto block"
-                              />
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              <input type="number" min="0"
-                                value={row.wrongAnswers || ""}
-                                onChange={e => updateRow(idx, "wrongAnswers", Number(e.target.value))}
-                                disabled={row.saved || saving} placeholder="0"
-                                className="w-full max-w-[80px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-red-300 focus:ring-2 focus:ring-red-100 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400 mx-auto block"
-                              />
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="py-2 px-2 text-center">
-                              <input type="number" min="0" max="90"
-                                value={row.biologyCorrect || ""}
-                                onChange={e => updateRow(idx, "biologyCorrect", Number(e.target.value))}
-                                disabled={row.saved || saving} placeholder="0"
-                                className="w-full max-w-[70px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-green-400 focus:ring-2 focus:ring-green-100 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400 mx-auto block"
-                              />
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              <input type="number" min="0" max="45"
-                                value={row.chemistryCorrect || ""}
-                                onChange={e => updateRow(idx, "chemistryCorrect", Number(e.target.value))}
-                                disabled={row.saved || saving} placeholder="0"
-                                className="w-full max-w-[70px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400 mx-auto block"
-                              />
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              <input type="number" min="0" max="45"
-                                value={row.physicsCorrect || ""}
-                                onChange={e => updateRow(idx, "physicsCorrect", Number(e.target.value))}
-                                disabled={row.saved || saving} placeholder="0"
-                                className="w-full max-w-[70px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-orange-400 focus:ring-2 focus:ring-orange-100 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400 mx-auto block"
-                              />
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              <input type="number" min="0"
-                                value={row.totalWrong || ""}
-                                onChange={e => updateRow(idx, "totalWrong", Number(e.target.value))}
-                                disabled={row.saved || saving} placeholder="0"
-                                className="w-full max-w-[70px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-red-300 focus:ring-2 focus:ring-red-100 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400 mx-auto block"
-                              />
-                            </td>
-                          </>
-                        )}
+                        <td className="py-2 px-2 text-center">
+                          <input type="number" min="0" max={testInfo?.totalQ || 180}
+                            value={row.correctAnswers || ""}
+                            onChange={e => updateRow(idx, "correctAnswers", Number(e.target.value))}
+                            disabled={row.saved || saving} placeholder="0"
+                            className="w-full max-w-[80px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400 mx-auto block"
+                          />
+                        </td>
+                        <td className="py-2 px-2 text-center">
+                          <input type="number" min="0"
+                            value={row.wrongAnswers || ""}
+                            onChange={e => updateRow(idx, "wrongAnswers", Number(e.target.value))}
+                            disabled={row.saved || saving} placeholder="0"
+                            className="w-full max-w-[80px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-red-300 focus:ring-2 focus:ring-red-100 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400 mx-auto block"
+                          />
+                        </td>
 
                         <td className="py-2 px-3 text-center font-semibold text-slate-500">{row.unanswered}</td>
                         <td className="py-2 px-3 text-center">
@@ -941,6 +865,7 @@ export default function MarksRegistryPage() {
                   <th className="text-left py-3.5 px-4 font-bold text-slate-500 text-[11px] uppercase tracking-wider">Test Type</th>
                   <th className="text-left py-3.5 px-4 font-bold text-slate-500 text-[11px] uppercase tracking-wider">Test Date</th>
                   <th className="text-center py-3.5 px-4 font-bold text-slate-500 text-[11px] uppercase tracking-wider">Students</th>
+                  <th className="text-left py-3.5 px-4 font-bold text-slate-500 text-[11px] uppercase tracking-wider">Created Date</th>
                   <th className="text-right py-3.5 px-4 font-bold text-slate-500 text-[11px] uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -963,6 +888,9 @@ export default function MarksRegistryPage() {
                       <span className="inline-flex items-center gap-1 font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200 text-xs">
                         <Users className="w-3 h-3" /> {rec.studentCount}
                       </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-left font-medium text-slate-650">
+                      {rec.createdAt ? new Date(rec.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="flex items-center justify-end gap-2">

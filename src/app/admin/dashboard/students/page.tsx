@@ -337,7 +337,7 @@ export default function StudentManagementPage() {
                 <table className="min-w-full divide-y divide-slate-200">
                   <thead className="bg-slate-50">
                     <tr>
-                      {["Student", "Batch", "Mobile", "Username", "Password", "Status", ""].map((header) => (
+                      {["Student", "Batch", "Mobile", "Username", "Status", ""].map((header) => (
                         <th key={header} className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
                           {header}
                         </th>
@@ -415,12 +415,11 @@ export default function StudentManagementPage() {
                 <table className="min-w-full divide-y divide-slate-200">
                   <thead className="bg-slate-50">
                     <tr>
-                      <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-550 uppercase tracking-wider">Student</th>
-                      <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-550 uppercase tracking-wider">Batch</th>
-                      <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-550 uppercase tracking-wider">Mobile</th>
-                      <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-550 uppercase tracking-wider">Username</th>
-                      <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-550 uppercase tracking-wider">Password</th>
-                      <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-550 uppercase tracking-wider">Status</th>
+                      <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-555 uppercase tracking-wider">Student</th>
+                      <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-555 uppercase tracking-wider">Batch</th>
+                      <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-555 uppercase tracking-wider">Mobile</th>
+                      <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-555 uppercase tracking-wider">Username</th>
+                      <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-slate-555 uppercase tracking-wider">Status</th>
                       <th scope="col" className="relative px-6 py-4">
                         <span className="sr-only">Actions</span>
                       </th>
@@ -456,11 +455,7 @@ export default function StudentManagementPage() {
                             {std.username || std.name}
                           </code>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <code className="text-slate-700 text-xs font-mono bg-slate-100 px-2 py-1 rounded border border-slate-200/60 font-semibold">
-                            {std.password || std.phone}
-                          </code>
-                        </td>
+
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
                             (std.status || "Active") === "Active"
@@ -548,14 +543,7 @@ export default function StudentManagementPage() {
                           {std.username || std.name}
                         </code>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500 font-semibold flex items-center gap-1.5">
-                          <Lock className="w-3.5 h-3.5 text-slate-400" /> Password:
-                        </span>
-                        <code className="text-slate-700 font-semibold font-mono bg-white px-2 py-0.5 rounded border border-slate-200">
-                          {std.password || std.phone}
-                        </code>
-                      </div>
+
                       <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
                         <span className="text-slate-500 font-semibold">Status:</span>
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${

@@ -13,12 +13,26 @@ interface ChartProps {
 }
 
 // 1. LINE CHART COMPONENT
-export function LineChart({ data, maxVal = 720, height = 240 }: ChartProps) {
+export function LineChart({ data, maxVal = 720, height = 240, strokeColor = "#2563EB" }: {
+  data: {
+    label: string
+    value: number
+    score?: number
+    maxMarks?: number
+    percentage?: number
+    date?: string
+  }[]
+  maxVal?: number
+  height?: number
+  strokeColor?: string
+}) {
+  const [hoveredPoint, setHoveredPoint] = React.useState<any | null>(null)
+
   if (!data || data.length === 0) {
     return <div className="h-48 flex items-center justify-center text-slate-400 font-semibold">No test records to plot</div>
   }
 
-  const padding = 40
+  const padding = 45
   const chartHeight = height - padding * 2
   const chartWidth = 500
 
@@ -39,7 +53,7 @@ export function LineChart({ data, maxVal = 720, height = 240 }: ChartProps) {
   }
 
   return (
-    <div className="w-full bg-white border border-slate-100 rounded-2xl p-4 shadow-sm">
+    <div className="w-full bg-white border border-slate-100 rounded-2xl p-4 shadow-sm relative">
       <svg viewBox={`0 0 ${chartWidth} ${height}`} className="w-full h-auto overflow-visible">
         {/* Horizontal gridlines */}
         {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
@@ -68,40 +82,40 @@ export function LineChart({ data, maxVal = 720, height = 240 }: ChartProps) {
           <path
             d={pathD}
             fill="none"
-            stroke="#2563EB"
-            strokeWidth={3}
+            stroke={strokeColor}
+            strokeWidth={3.5}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="drop-shadow-[0_2px_8px_rgba(37,99,235,0.25)] animate-dash"
+            className="drop-shadow-[0_2px_8px_rgba(37,99,235,0.2)]"
           />
         )}
 
         {/* Data points */}
         {points.map((pt, idx) => (
-          <g key={idx} className="group cursor-pointer">
+          <g
+            key={idx}
+            className="cursor-pointer"
+            onMouseEnter={() => setHoveredPoint(pt)}
+            onMouseLeave={() => setHoveredPoint(null)}
+            onClick={() => setHoveredPoint(pt)}
+          >
+            {/* Larger transparent hover target */}
             <circle
               cx={pt.x}
               cy={pt.y}
-              r={5}
-              fill="#2563EB"
-              stroke="#FFFFFF"
-              strokeWidth={2}
-              className="transition-all duration-300 hover:r-8 hover:fill-blue-700"
+              r={12}
+              fill="transparent"
             />
-            {/* Simple tooltip block on hover */}
-            <g className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-              <rect
-                x={pt.x - 45}
-                y={pt.y - 35}
-                width={90}
-                height={24}
-                rx={6}
-                fill="#0F172A"
-              />
-              <text x={pt.x} y={pt.y - 20} fill="#FFFFFF" className="text-[10px] font-bold" textAnchor="middle">
-                {pt.label}: {pt.value}
-              </text>
-            </g>
+            {/* Visual dot */}
+            <circle
+              cx={pt.x}
+              cy={pt.y}
+              r={pt.value === hoveredPoint?.value && pt.label === hoveredPoint?.label ? 7 : 4.5}
+              fill={strokeColor}
+              stroke="#FFFFFF"
+              strokeWidth={2.5}
+              className="transition-all duration-150"
+            />
           </g>
         ))}
 
@@ -110,15 +124,40 @@ export function LineChart({ data, maxVal = 720, height = 240 }: ChartProps) {
           <text
             key={idx}
             x={pt.x}
-            y={height - padding + 18}
+            y={height - padding + 20}
             fill="#64748B"
             className="text-[9px] font-bold"
             textAnchor="middle"
           >
-            {pt.label.length > 8 ? pt.label.substring(0, 7) + ".." : pt.label}
+            {pt.date || pt.label}
           </text>
         ))}
       </svg>
+
+      {/* Floating Tooltip HTML Overlay */}
+      {hoveredPoint && (
+        <div
+          className="absolute bg-slate-900/95 backdrop-blur-sm text-white p-3 rounded-xl shadow-xl border border-slate-750 pointer-events-none text-[11px] space-y-1.5 z-50 transition-all duration-150 min-w-[150px]"
+          style={{
+            left: `${(hoveredPoint.x / chartWidth) * 100}%`,
+            top: `${(hoveredPoint.y / height) * 100}%`,
+            transform: "translate(-50%, -115%)"
+          }}
+        >
+          <p className="font-extrabold text-slate-100 border-b border-slate-800 pb-1 truncate max-w-[180px]">
+            {hoveredPoint.label}
+          </p>
+          <p className="text-slate-400 font-semibold">
+            Date: <span className="text-white">{hoveredPoint.date || "N/A"}</span>
+          </p>
+          <p className="text-slate-400 font-semibold">
+            Score: <span className="text-blue-400 font-bold">{hoveredPoint.score ?? hoveredPoint.value} / {hoveredPoint.maxMarks ?? maxVal}</span>
+          </p>
+          <p className="text-slate-400 font-semibold">
+            Percentage: <span className="text-amber-400 font-bold">{hoveredPoint.percentage ?? Math.round((hoveredPoint.value / maxVal) * 100)}%</span>
+          </p>
+        </div>
+      )}
     </div>
   )
 }
