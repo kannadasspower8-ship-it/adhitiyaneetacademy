@@ -1,0 +1,393 @@
+================================================================================
+DASSOS.TXT — COMPLETE UNDERSTANDING OF THE .AGENT DIRECTORY
+================================================================================
+Created: 2026-06-25
+Read by: Antigravity AI
+Project: ADHITHYA NEET Academy
+================================================================================
+
+
+1. WHAT IS THE .AGENT DIRECTORY?
+================================================================================
+
+The .agent directory is your CUSTOM AI WORKFLOW SYSTEM. It is a hand-crafted
+framework that tells any AI assistant (like me) HOW to work on your project.
+
+Think of it as a "playbook" or "instruction manual" for the AI.
+
+It contains:
+  - Agent role definitions (who does what)
+  - An orchestrator (the master workflow/pipeline)
+  - Memory files (project context, history, decisions)
+  - Commands (reusable task blueprints)
+  - Rules (always-on coding/SEO/UI standards)
+  - Checklists (pre-deployment verification)
+  - Logs (change history, daily logs, error tracking)
+  - Prompts, Skills, Templets directories (currently empty, for future use)
+
+
+2. DIRECTORY STRUCTURE (A to Z)
+================================================================================
+
+.agent/
+│
+├── orchestrator.md          ← THE MASTER FILE (central workflow controller)
+│
+├── agents/                  ← 8 agent role definitions
+│   ├── project-manager.md
+│   ├── solution-architect.md
+│   ├── ui-designer.md
+│   ├── frontend-engineer.md
+│   ├── backend-engineer.md
+│   ├── seo-engineer.md       ← (empty, needs content)
+│   ├── qa-engineer.md
+│   └── deployment-engineer.md
+│
+├── memory/                  ← 9 memory files (project knowledge base)
+│   ├── project.md           ← Project name, status, type, priority
+│   ├── profile.md           ← Developer preferences, stack, style
+│   ├── client.md            ← (empty) Client information
+│   ├── features.md          ← (empty) Feature list
+│   ├── progress.md          ← (empty) Progress tracking
+│   ├── bugs.md              ← (empty) Known bugs
+│   ├── decisions.md         ← (empty) Design decisions
+│   ├── sessions.md          ← (empty) Session history
+│   └── stack.md             ← (empty) Technology stack details
+│
+├── commands/                ← 8 task blueprints (numbered workflows)
+│   ├── 01-build-business-site.md    ← Full 13-step build workflow
+│   ├── 02-create-dashboard.md       ← (empty)
+│   ├── 03-create-admin-panel.md     ← (empty)
+│   ├── 04-fix-responsive.md        ← (empty)
+│   ├── 05-audit-seo.md             ← (empty)
+│   ├── 06-review-code.md           ← (empty)
+│   ├── 07-optimize-performance.md   ← (empty)
+│   └── 08-deploy-project.md        ← (empty)
+│
+├── rules/                   ← 4 rule files (always-on standards)
+│   ├── coding.md            ← TypeScript, modular code, 250-line limit, etc.
+│   ├── seo.md               ← Title, meta, Open Graph, JSON-LD, etc.
+│   ├── testing.md           ← (empty)
+│   └── ui.md                ← (empty)
+│
+├── checklists/              ← Pre-deployment verification
+│   └── deployment.md        ← 9-point deployment checklist
+│
+├── logs/                    ← Activity tracking
+│   ├── changes.md           ← Version changelog (empty template)
+│   ├── daily.md             ← Daily work log (empty template)
+│   └── errors.md            ← Error tracking (empty template)
+│
+├── prompts/                 ← (empty directory, for future prompt templates)
+├── skills/                  ← (empty directory, for future skill definitions)
+└── templets/                ← (empty directory, for future templates)
+
+
+3. THE ORCHESTRATOR (orchestrator.md) — THE BRAIN
+================================================================================
+
+This is the MOST IMPORTANT file. It defines TWO things:
+
+A) STARTUP ROUTINE — What to do BEFORE answering any request:
+   → Read all memory files (project, progress, client, features, bugs,
+     decisions, sessions, stack)
+   → Understand current state
+   → Never ask for info that already exists
+   → Continue from latest progress
+
+B) 8-PHASE DEVELOPMENT PIPELINE — Work in this exact order:
+
+   Phase 1: PROJECT MANAGER
+     → Understand requirements, break into tasks, estimate, plan
+
+   Phase 2: SOLUTION ARCHITECT
+     → Choose architecture, folder structure, tech stack, database
+
+   Phase 3: UI DESIGNER
+     → Premium, mobile-first, accessible, professional design
+
+   Phase 4: FRONTEND ENGINEER
+     → Build reusable components, modular code, optimize
+
+   Phase 5: BACKEND ENGINEER (only if needed)
+     → Auth, database, storage, APIs, security
+
+   Phase 6: SEO ENGINEER
+     → Metadata, schema, OG tags, sitemap, robots.txt
+
+   Phase 7: QA ENGINEER
+     → Test responsiveness, forms, navigation, buttons,
+       images, console, accessibility, performance
+
+   Phase 8: DEPLOYMENT ENGINEER
+     → Production build, deploy, env vars, verify, report
+
+C) GENERAL RULES:
+   → Never skip phases
+   → Never jump directly into coding
+   → Always review previous phase before next
+   → Always produce production-ready work
+   → Stop and ask if requirements incomplete
+
+D) AFTER EVERY TASK:
+   → Update progress.md, bugs.md, features.md, sessions.md, decisions.md
+
+
+4. AGENT ROLES (agents/ directory)
+================================================================================
+
+4.1 PROJECT MANAGER (project-manager.md)
+   - Break projects into phases
+   - Create task lists
+   - Estimate complexity
+   - Prevent feature creep
+   - Ask for missing requirements
+   - Produce development roadmap
+   - NEVER writes code
+   - Always creates implementation plan first
+
+4.2 SOLUTION ARCHITECT (solution-architect.md)
+   - Choose technologies
+   - Design folder structure
+   - Choose database schema
+   - Choose APIs
+   - Design reusable architecture
+   - Keep projects scalable
+   - Never duplicate logic
+   - Document important decisions
+
+4.3 UI DESIGNER (ui-designer.md)
+   - Premium UI
+   - Modern layouts
+   - Excellent typography
+   - Balanced spacing
+   - Beautiful gradients
+   - Accessible colors
+   - Glass effects only when appropriate
+   - Every page must look agency quality
+
+4.4 FRONTEND ENGINEER (frontend-engineer.md)
+   - Uses: React, TypeScript, Tailwind
+   - Reusable components
+   - Never duplicate components
+   - Never hardcode values
+   - Always optimize performance
+   - Always use semantic HTML
+
+4.5 BACKEND ENGINEER (backend-engineer.md)
+   - Preferred backend: Supabase
+   - Handles: Authentication, Database, Storage, Policies, Edge Functions
+   - Always secure APIs
+   - Never expose keys
+
+4.6 SEO ENGINEER (seo-engineer.md)
+   - Currently EMPTY (no content defined)
+
+4.7 QA ENGINEER (qa-engineer.md)
+   - Tests: Forms, Links, Buttons, Navigation, Console,
+     Performance, Accessibility
+   - Tests on: Mobile, Tablet, Desktop
+   - Never approves broken pages
+
+4.8 DEPLOYMENT ENGINEER (deployment-engineer.md)
+   - Handles: Production Build, Environment Variables,
+     Netlify, GitHub, Performance, SEO Verification
+   - Creates: Deployment Checklist, Post Deployment Report
+
+
+5. MEMORY FILES (memory/ directory) — THE KNOWLEDGE BASE
+================================================================================
+
+5.1 project.md (FILLED)
+   - Name: ADHITHYA NEET Academy
+   - Status: Development
+   - Type: Business Website
+   - Priority: High
+   - Current Phase: Frontend Development
+   - Client: ADHITHYA NEET Academy
+   - Target Users: Students, Parents
+   - Deadline: Not Specified
+
+5.2 profile.md (FILLED)
+   - Identity: "You are my permanent AI software engineer"
+   - Stack: React, TypeScript, Tailwind CSS, Vite, Supabase, Netlify
+   - UI Style: Premium, Modern, Minimal, Glassmorphism, Animations,
+     Professional typography, Mobile-first
+   - Coding Style: Clean architecture, Reusable components, Modular, No dupes
+   - Performance Targets: Lighthouse >95 across all categories
+   - SEO: Always include meta, OG, robots, sitemap, JSON-LD
+   - Never: hardcode secrets, duplicate components, horizontal scrolling,
+     placeholder text in production
+
+5.3 EMPTY FILES (need to be filled):
+   - client.md      → Client info (contact, preferences)
+   - features.md    → List of implemented/planned features
+   - progress.md    → Current progress tracking
+   - bugs.md        → Known bugs and issues
+   - decisions.md   → Architecture/design decisions made
+   - sessions.md    → Session history (what was done each session)
+   - stack.md       → Detailed tech stack info
+
+
+6. COMMANDS (commands/ directory) — TASK BLUEPRINTS
+================================================================================
+
+6.1 01-build-business-site.md (FILLED)
+   13-step workflow:
+   1. Read orchestrator.md
+   2. Read project memory
+   3. Read project rules
+   4. PM creates development plan
+   5. Architect designs structure
+   6. UI Designer creates interface
+   7. Frontend Engineer builds components
+   8. Backend Engineer builds backend (if needed)
+   9. SEO Engineer optimizes every page
+   10. QA Engineer tests everything
+   11. Deployment Engineer prepares production
+   12. Update memory
+   13. Generate summary
+
+6.2 EMPTY COMMAND FILES (placeholders, no content):
+   - 02-create-dashboard.md
+   - 03-create-admin-panel.md
+   - 04-fix-responsive.md
+   - 05-audit-seo.md
+   - 06-review-code.md
+   - 07-optimize-performance.md
+   - 08-deploy-project.md
+
+
+7. RULES (rules/ directory) — ALWAYS-ON STANDARDS
+================================================================================
+
+7.1 coding.md (FILLED, trigger: always_on)
+   - Read the project before changing anything
+   - Reuse existing components
+   - Keep code modular
+   - Use TypeScript
+   - Keep components under 250 lines
+   - Use descriptive variable names
+   - Remove unused imports
+   - Fix console errors
+   - Explain major changes
+
+7.2 seo.md (FILLED, trigger: always_on)
+   - Title
+   - Meta description
+   - Canonical URL
+   - Open Graph
+   - JSON-LD
+   - robots.txt
+   - sitemap.xml
+   - Semantic HTML
+   - Alt text
+
+7.3 testing.md — EMPTY (no rules defined)
+7.4 ui.md — EMPTY (no rules defined)
+
+
+8. CHECKLISTS (checklists/ directory)
+================================================================================
+
+8.1 deployment.md (FILLED) — 9-point pre-deploy checklist:
+   - No console errors
+   - Responsive
+   - Images optimized
+   - Forms tested
+   - SEO completed
+   - Favicon added
+   - robots.txt
+   - sitemap.xml
+   - Lighthouse >95
+
+
+9. LOGS (logs/ directory) — ACTIVITY TRACKING
+================================================================================
+
+9.1 changes.md — Version changelog template (Added/Updated/Removed)
+9.2 daily.md — Daily log template (Completed/Problems/Tomorrow)
+9.3 errors.md — Error log template (Open/Fixed/Notes)
+
+All three are EMPTY TEMPLATES — no entries have been logged yet.
+
+
+10. EMPTY DIRECTORIES (for future use)
+================================================================================
+
+- prompts/    → For reusable prompt templates
+- skills/     → For specialized skill definitions
+- templets/   → For project/component templates
+
+
+11. WHAT IS CURRENTLY WORKING vs. INCOMPLETE
+================================================================================
+
+WORKING (has content):
+  ✅ orchestrator.md — Full 8-phase pipeline defined
+  ✅ agents/project-manager.md — Complete
+  ✅ agents/solution-architect.md — Complete
+  ✅ agents/ui-designer.md — Complete
+  ✅ agents/frontend-engineer.md — Complete
+  ✅ agents/backend-engineer.md — Complete
+  ✅ agents/qa-engineer.md — Complete
+  ✅ agents/deployment-engineer.md — Complete
+  ✅ memory/project.md — Filled with project info
+  ✅ memory/profile.md — Filled with developer preferences
+  ✅ commands/01-build-business-site.md — Full workflow
+  ✅ rules/coding.md — 9 coding rules
+  ✅ rules/seo.md — 9 SEO requirements
+  ✅ checklists/deployment.md — 9-point checklist
+  ✅ logs/changes.md — Template ready
+  ✅ logs/daily.md — Template ready
+  ✅ logs/errors.md — Template ready
+
+INCOMPLETE / EMPTY (needs content):
+  ❌ agents/seo-engineer.md — Empty
+  ❌ memory/client.md — Empty
+  ❌ memory/features.md — Empty
+  ❌ memory/progress.md — Empty
+  ❌ memory/bugs.md — Empty
+  ❌ memory/decisions.md — Empty
+  ❌ memory/sessions.md — Empty
+  ❌ memory/stack.md — Empty
+  ❌ commands/02 through 08 — All empty
+  ❌ rules/testing.md — Empty
+  ❌ rules/ui.md — Empty
+  ❌ prompts/ — Empty directory
+  ❌ skills/ — Empty directory
+  ❌ templets/ — Empty directory
+
+
+12. MY OVERALL UNDERSTANDING
+================================================================================
+
+Your .agent directory is a CUSTOM AI DEVELOPMENT FRAMEWORK designed to:
+
+1. STANDARDIZE how AI works on your projects — ensuring it always follows
+   the same 8-phase pipeline (Plan → Architect → Design → Build Frontend
+   → Build Backend → SEO → QA → Deploy).
+
+2. MAINTAIN MEMORY across sessions — so the AI never loses context about
+   the project, bugs, progress, decisions, or client info.
+
+3. ENFORCE QUALITY STANDARDS — through always-on rules for coding, SEO,
+   and pre-deployment checklists.
+
+4. DEFINE REUSABLE COMMANDS — so common tasks (build site, create dashboard,
+   fix responsive, deploy, etc.) can be triggered consistently.
+
+5. TRACK HISTORY — through change logs, daily logs, and error logs.
+
+The framework is WELL STRUCTURED but about 60% of the files are still
+empty templates waiting to be filled. The core orchestrator, agent roles,
+project info, developer profile, coding rules, and SEO rules are all
+properly defined and functional.
+
+The stack is: React + TypeScript + Tailwind + Supabase + Netlify
+The target: Premium, mobile-first, agency-quality websites
+The current project: ADHITHYA NEET Academy (coaching center website)
+
+================================================================================
+END OF DASSOS.TXT
+================================================================================

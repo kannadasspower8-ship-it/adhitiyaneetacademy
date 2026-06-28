@@ -1,15 +1,38 @@
 "use client"
 
-import React from "react"
+import React, { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { Header } from "@/components/layout/Header"
 import { Footer } from "@/components/layout/Footer"
+import { createClient } from "@/lib/supabase/client"
 
 export default function RootLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   
   // Hide public navigation, footer, and whatsapp button for all admin/login/student pages
   const isAdminOrLoginOrStudent = pathname.startsWith("/admin") || pathname.startsWith("/login") || pathname.startsWith("/student")
+
+  const [whatsappNumber, setWhatsappNumber] = useState("9600607680")
+
+  useEffect(() => {
+    if (isAdminOrLoginOrStudent) return
+    const loadSettings = async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from("contact_information")
+          .select("whatsapp")
+          .eq("id", "main")
+          .single();
+        if (data?.whatsapp) {
+          setWhatsappNumber(data.whatsapp);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    loadSettings();
+  }, [isAdminOrLoginOrStudent]);
 
   if (isAdminOrLoginOrStudent) {
     return <main className="flex-grow">{children}</main>
@@ -25,7 +48,7 @@ export default function RootLayoutClient({ children }: { children: React.ReactNo
       
       {/* Premium Floating WhatsApp Button */}
       <a 
-        href="https://wa.me/919600607680?text=Hello%20ADHITYA%20NEET%20ACADEMY%2C%20I%20would%20like%20to%20know%20more%20about%20your%20courses."
+        href={`https://wa.me/91${whatsappNumber}?text=Hello%20ADHITYA%20NEET%20ACADEMY%2C%20I%20would%20like%20to%20know%20more%20about%20your%20courses.`}
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-[90] flex items-center gap-2.5 px-5 py-3.5 rounded-full bg-[#25D366] text-white shadow-xl shadow-[#25D366]/25 hover:bg-[#20bd5a] hover:scale-105 transition-all duration-300 group"

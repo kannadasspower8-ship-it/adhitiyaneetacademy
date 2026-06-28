@@ -17,6 +17,7 @@ export const getGlobalSettings = cache(async function (customClient?: any): Prom
 
     return {
       ...cmsContent.global,
+      academyName: data.academy_name || cmsContent.global.academyName,
       phonePrimary: data.phone || cmsContent.global.phonePrimary,
       phoneSecondary: data.phone || cmsContent.global.phoneSecondary,
       emailPrimary: data.email || cmsContent.global.emailPrimary,
@@ -24,6 +25,7 @@ export const getGlobalSettings = cache(async function (customClient?: any): Prom
       address: data.address || cmsContent.global.address,
       mapEmbed: data.map_embed || cmsContent.global.mapEmbed,
       whatsappNumber: data.whatsapp || "9600607680",
+      workingHours: data.working_hours || "9:00 AM - 7:00 PM",
       socialLinks: {
         facebook: data.facebook || cmsContent.global.socialLinks.facebook,
         instagram: data.instagram || cmsContent.global.socialLinks.instagram,
@@ -49,6 +51,13 @@ export const getSectionContent = cache(async function (key: string, fallback: an
           description: data.hero_description || fallback.description,
           image: data.hero_image || fallback.image,
           ctaText: data.cta_text || fallback.ctaText,
+          subtitle: data.hero_subtitle || fallback.subtitle || "Guiding Future Medical Professionals",
+          primaryBtnText: data.primary_btn_text || fallback.primaryBtnText || "Apply for Admission",
+          primaryBtnLink: data.primary_btn_link || fallback.primaryBtnLink || "/contact",
+          secondaryBtnText: data.secondary_btn_text || fallback.secondaryBtnText || "WhatsApp Now",
+          secondaryBtnLink: data.secondary_btn_link || fallback.secondaryBtnLink || "",
+          stats: data.stats || null,
+          testimonials: data.testimonials || [],
         }
       }
     }
@@ -119,7 +128,8 @@ export const getDynamicCourses = cache(async function (customClient?: any): Prom
       .from("courses")
       .select("*")
       .eq("status", "Active")
-      .order("created_at", { ascending: true })
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false })
 
     if (error || !data || data.length === 0) return mockCourses
 
@@ -133,6 +143,8 @@ export const getDynamicCourses = cache(async function (customClient?: any): Prom
       description: c.description || "",
       highlights: c.highlights || [],
       image: c.image_url || null,
+      eligibility: c.eligibility || "NEET Aspirants",
+      sort_order: c.sort_order || 0,
     }))
   } catch {
     return mockCourses
@@ -145,6 +157,7 @@ export const getDynamicGallery = cache(async function (customClient?: any): Prom
     const { data, error } = await supabase
       .from("gallery")
       .select("*")
+      .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false })
 
     if (error || !data || data.length === 0) {
@@ -160,6 +173,7 @@ export const getDynamicGallery = cache(async function (customClient?: any): Prom
       src: g.image_url,
       alt: g.caption || "Campus Life Gallery Shot",
       category: "Campus",
+      sort_order: g.sort_order || 0,
     }))
   } catch {
     return [
@@ -174,16 +188,21 @@ export const getDynamicAchievements = cache(async function (customClient?: any):
     const { data, error } = await supabase
       .from("achievements")
       .select("*")
+      .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false })
 
     if (error || !data || data.length === 0) return mockAchievements
 
     return data.map((a: any) => ({
+      id: a.id,
       name: a.name,
       rank: a.rank,
       score: a.score,
       year: a.year,
       image: a.image_url || "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&q=80",
+      description: a.description || "",
+      medical_college: a.medical_college || "",
+      sort_order: a.sort_order || 0,
     }))
   } catch {
     return mockAchievements

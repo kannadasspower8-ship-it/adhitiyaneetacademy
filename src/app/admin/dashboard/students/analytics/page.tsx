@@ -41,6 +41,11 @@ function AnalyticsContent() {
   const [loading, setLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
   const [activeSubject, setActiveSubject] = useState<string>("biology") // biology, chemistry, physics, grand
+  const [expandedTestId, setExpandedTestId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setExpandedTestId(null)
+  }, [activeSubject])
 
   // Load from local storage cache immediately
   useEffect(() => {
@@ -144,7 +149,14 @@ function AnalyticsContent() {
       total: m.total || 0,
       max_marks: m.max_marks || 0,
       percentage: m.percentage || 0,
-      performance: m.performance || "Average"
+      performance: m.performance || "Average",
+      biology_correct: m.biology_correct || 0,
+      chemistry_correct: m.chemistry_correct || 0,
+      physics_correct: m.physics_correct || 0,
+      total_wrong: m.total_wrong || 0,
+      biology: m.biology || 0,
+      chemistry: m.chemistry || 0,
+      physics: m.physics || 0
     }))
   }, [marks])
 
@@ -470,50 +482,266 @@ function AnalyticsContent() {
                             </td>
                           </tr>
                         ) : (
-                          currentSubjectData.historyList.map(m => (
-                            <tr key={m.id} className="hover:bg-slate-50/20 transition-colors">
-                              <td className="py-3 px-4 font-semibold text-slate-400 whitespace-nowrap">
-                                {m.test_date ? formatDate(m.test_date) : "—"}
-                              </td>
-                              <td className="py-3 px-4 font-bold text-slate-800 whitespace-nowrap">
-                                {m.test_name || "N/A"}
-                              </td>
-                              <td className="py-3 px-4 text-center font-bold text-[#10B981]">
-                                {m.correct_answers}
-                              </td>
-                              <td className="py-3 px-4 text-center font-bold text-[#EF4444]">
-                                {m.wrong_answers}
-                              </td>
-                              <td className="py-3 px-4 text-center font-semibold text-slate-400">
-                                {m.unanswered_questions}
-                              </td>
-                              <td className="py-3 px-4 text-center font-bold text-slate-800 whitespace-nowrap">
-                                {m.total} <span className="text-[10px] font-medium text-slate-400">/ {m.max_marks || currentSubjectData.config.max}</span>
-                              </td>
-                              <td className="py-3 px-4 text-center font-bold text-[#2563EB]">
-                                {m.percentage}%
-                              </td>
-                              <td className="py-3 px-4 text-center whitespace-nowrap">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                  m.performance === "Excellent"
-                                    ? "bg-emerald-50 border-emerald-250 text-emerald-700"
-                                    : m.performance === "Good"
-                                    ? "bg-blue-50 border-blue-200 text-[#2563EB]"
-                                    : m.performance === "Average"
-                                    ? "bg-amber-50 border-amber-250 text-amber-700"
-                                    : "bg-red-50 border-red-250 text-[#EF4444]"
-                                }`}>
-                                  {m.performance || "Average"}
-                                </span>
-                              </td>
-                            </tr>
-                          ))
+                          currentSubjectData.historyList.map(m => {
+                            const isExpanded = expandedTestId === m.id
+                            const isGrandTest = activeSubject === "grand"
+
+                            // Reconstruct subject-wise wrong answers
+                            const bioC = m.biology_correct || 0
+                            const chemC = m.chemistry_correct || 0
+                            const physC = m.physics_correct || 0
+                            const bioW = isGrandTest ? Math.max(0, (bioC * 4) - (m.biology || 0)) : 0
+                            const chemW = isGrandTest ? Math.max(0, (chemC * 4) - (m.chemistry || 0)) : 0
+                            const physW = isGrandTest ? Math.max(0, (physC * 4) - (m.physics || 0)) : 0
+
+                            return (
+                              <React.Fragment key={m.id}>
+                                <tr
+                                  className={`hover:bg-slate-50/20 transition-colors ${isGrandTest ? "cursor-pointer" : ""}`}
+                                  onClick={() => {
+                                    if (isGrandTest) {
+                                      setExpandedTestId(isExpanded ? null : m.id)
+                                    }
+                                  }}
+                                >
+                                  <td className="py-3 px-4 font-semibold text-slate-400 whitespace-nowrap">
+                                    {m.test_date ? formatDate(m.test_date) : "—"}
+                                  </td>
+                                  <td className="py-3 px-4 font-bold text-slate-800 whitespace-nowrap">
+                                    <div className="flex items-center gap-2">
+                                      <span>{m.test_name || "N/A"}</span>
+                                      {isGrandTest && (
+                                        <span className="text-[9px] text-[#2563EB] bg-blue-50 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-blue-150 shrink-0">
+                                          {isExpanded ? "Hide details" : "Show details"}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-4 text-center font-bold text-[#10B981]">
+                                    {m.correct_answers}
+                                  </td>
+                                  <td className="py-3 px-4 text-center font-bold text-[#EF4444]">
+                                    {m.wrong_answers}
+                                  </td>
+                                  <td className="py-3 px-4 text-center font-semibold text-slate-400">
+                                    {m.unanswered_questions}
+                                  </td>
+                                  <td className="py-3 px-4 text-center font-bold text-slate-800 whitespace-nowrap">
+                                    {m.total} <span className="text-[10px] font-medium text-slate-400">/ {m.max_marks || currentSubjectData.config.max}</span>
+                                  </td>
+                                  <td className="py-3 px-4 text-center font-bold text-[#2563EB]">
+                                    {m.percentage}%
+                                  </td>
+                                  <td className="py-3 px-4 text-center whitespace-nowrap">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                      m.performance === "Excellent"
+                                        ? "bg-emerald-50 border-emerald-250 text-emerald-700"
+                                        : m.performance === "Good"
+                                        ? "bg-blue-50 border-blue-200 text-[#2563EB]"
+                                        : m.performance === "Average"
+                                        ? "bg-amber-50 border-amber-250 text-amber-700"
+                                        : "bg-red-50 border-red-250 text-[#EF4444]"
+                                    }`}>
+                                      {m.performance || "Average"}
+                                    </span>
+                                  </td>
+                                </tr>
+
+                                {isGrandTest && isExpanded && (
+                                  <tr>
+                                    <td colSpan={8} className="p-4 bg-slate-50/50 border-y border-slate-100">
+                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
+                                        <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm space-y-1.5">
+                                          <span className="text-[10px] font-extrabold text-emerald-600 block uppercase tracking-wider">🧬 Biology</span>
+                                          <div className="flex justify-between text-xs text-slate-600">
+                                            <span>Correct: <strong className="text-emerald-600">{bioC}</strong></span>
+                                            <span>Wrong: <strong className="text-red-500">{bioW}</strong></span>
+                                          </div>
+                                          <div className="text-[11px] font-bold text-slate-700 pt-1 border-t border-slate-100 flex justify-between">
+                                            <span>Score:</span>
+                                            <span>{bioC * 4 - bioW} / 360</span>
+                                          </div>
+                                        </div>
+                                        
+                                        <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm space-y-1.5">
+                                          <span className="text-[10px] font-extrabold text-amber-600 block uppercase tracking-wider">⚛️ Physics</span>
+                                          <div className="flex justify-between text-xs text-slate-600">
+                                            <span>Correct: <strong className="text-emerald-600">{physC}</strong></span>
+                                            <span>Wrong: <strong className="text-red-500">{physW}</strong></span>
+                                          </div>
+                                          <div className="text-[11px] font-bold text-slate-700 pt-1 border-t border-slate-100 flex justify-between">
+                                            <span>Score:</span>
+                                            <span>{physC * 4 - physW} / 180</span>
+                                          </div>
+                                        </div>
+
+                                        <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm space-y-1.5">
+                                          <span className="text-[10px] font-extrabold text-blue-600 block uppercase tracking-wider">🧪 Chemistry</span>
+                                          <div className="flex justify-between text-xs text-slate-600">
+                                            <span>Correct: <strong className="text-emerald-600">{chemC}</strong></span>
+                                            <span>Wrong: <strong className="text-red-500">{chemW}</strong></span>
+                                          </div>
+                                          <div className="text-[11px] font-bold text-slate-700 pt-1 border-t border-slate-100 flex justify-between">
+                                            <span>Score:</span>
+                                            <span>{chemC * 4 - chemW} / 180</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            )
+                          })
                         )}
                       </tbody>
                     </table>
                   </div>
                 </div>
               </div>
+
+              {/* 4. Subject-wise Breakdown Summary (For Grand Test only) */}
+              {activeSubject === "grand" && (
+                <div className="space-y-3 mt-6">
+                  <h3 className="text-xs font-extrabold text-slate-450 uppercase tracking-wider">Subject-wise Average Breakdown</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Biology Average Card */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+                          <span>🧬</span> Biology Average
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400 font-semibold">Max: 360</span>
+                      </div>
+                      <div className="flex justify-between items-baseline pt-2">
+                        <div>
+                          <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Avg Correct</span>
+                          <span className="text-xl font-black text-emerald-600">
+                            {(() => {
+                              const list = currentSubjectData.historyList
+                              if (list.length === 0) return "0.0"
+                              const sum = list.reduce((acc, m) => acc + (m.biology_correct || 0), 0)
+                              return (sum / list.length).toFixed(1)
+                            })()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Avg Wrong</span>
+                          <span className="text-xl font-black text-red-500">
+                            {(() => {
+                              const list = currentSubjectData.historyList
+                              if (list.length === 0) return "0.0"
+                              const sum = list.reduce((acc, m) => acc + Math.max(0, ((m.biology_correct || 0) * 4) - (m.biology || 0)), 0)
+                              return (sum / list.length).toFixed(1)
+                            })()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Avg Score</span>
+                          <span className="text-xl font-black text-slate-800">
+                            {(() => {
+                              const list = currentSubjectData.historyList
+                              if (list.length === 0) return "0.0"
+                              const sum = list.reduce((acc, m) => acc + (m.biology || 0), 0)
+                              return (sum / list.length).toFixed(1)
+                            })()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Physics Average Card */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+                          <span>⚛️</span> Physics Average
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400 font-semibold">Max: 180</span>
+                      </div>
+                      <div className="flex justify-between items-baseline pt-2">
+                        <div>
+                          <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Avg Correct</span>
+                          <span className="text-xl font-black text-emerald-600">
+                            {(() => {
+                              const list = currentSubjectData.historyList
+                              if (list.length === 0) return "0.0"
+                              const sum = list.reduce((acc, m) => acc + (m.physics_correct || 0), 0)
+                              return (sum / list.length).toFixed(1)
+                            })()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Avg Wrong</span>
+                          <span className="text-xl font-black text-red-500">
+                            {(() => {
+                              const list = currentSubjectData.historyList
+                              if (list.length === 0) return "0.0"
+                              const sum = list.reduce((acc, m) => acc + Math.max(0, ((m.physics_correct || 0) * 4) - (m.physics || 0)), 0)
+                              return (sum / list.length).toFixed(1)
+                            })()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Avg Score</span>
+                          <span className="text-xl font-black text-slate-800">
+                            {(() => {
+                              const list = currentSubjectData.historyList
+                              if (list.length === 0) return "0.0"
+                              const sum = list.reduce((acc, m) => acc + (m.physics || 0), 0)
+                              return (sum / list.length).toFixed(1)
+                            })()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Chemistry Average Card */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+                          <span>🧪</span> Chemistry Average
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400 font-semibold">Max: 180</span>
+                      </div>
+                      <div className="flex justify-between items-baseline pt-2">
+                        <div>
+                          <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Avg Correct</span>
+                          <span className="text-xl font-black text-emerald-600">
+                            {(() => {
+                              const list = currentSubjectData.historyList
+                              if (list.length === 0) return "0.0"
+                              const sum = list.reduce((acc, m) => acc + (m.chemistry_correct || 0), 0)
+                              return (sum / list.length).toFixed(1)
+                            })()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Avg Wrong</span>
+                          <span className="text-xl font-black text-red-500">
+                            {(() => {
+                              const list = currentSubjectData.historyList
+                              if (list.length === 0) return "0.0"
+                              const sum = list.reduce((acc, m) => acc + Math.max(0, ((m.chemistry_correct || 0) * 4) - (m.chemistry || 0)), 0)
+                              return (sum / list.length).toFixed(1)
+                            })()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider block">Avg Score</span>
+                          <span className="text-xl font-black text-slate-800">
+                            {(() => {
+                              const list = currentSubjectData.historyList
+                              if (list.length === 0) return "0.0"
+                              const sum = list.reduce((acc, m) => acc + (m.chemistry || 0), 0)
+                              return (sum / list.length).toFixed(1)
+                            })()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

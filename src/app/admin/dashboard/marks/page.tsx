@@ -38,7 +38,6 @@ import { logAdminAction } from "@/lib/audit"
 
 const batchOptions = [
   { value: "Repeater", icon: "🔁", desc: "Re-appearing candidates" },
-  { value: "Rerepeater", icon: "🔄", desc: "Second re-attempt candidates" },
   { value: "Weekend Batch", icon: "📅", desc: "Weekend-only students" },
   { value: "Crash Course", icon: "⚡", desc: "Intensive short course" },
   { value: "Test Batch", icon: "📝", desc: "Practice test group" },
@@ -62,9 +61,11 @@ interface StudentRow {
   wrongAnswers: number
   // Grand fields
   biologyCorrect: number
-  chemistryCorrect: number
+  biologyWrong: number
   physicsCorrect: number
-  totalWrong: number
+  physicsWrong: number
+  chemistryCorrect: number
+  chemistryWrong: number
   // Computed
   unanswered: number
   score: number
@@ -91,16 +92,34 @@ type ViewMode = "registry" | "wizard-batch" | "wizard-type" | "spreadsheet" | "v
 
 function calcRow(row: StudentRow, testType: string): StudentRow {
   const r = { ...row }
-  const totalQ = testType === "grand" ? 180 : testType === "weekly_biology" ? 50 : 45
-  const maxM = testType === "grand" ? 720 : testType === "weekly_biology" ? 200 : 180
+  
+  if (testType === "grand") {
+    const bioCorrect = Number(r.biologyCorrect) || 0
+    const bioWrong = Number(r.biologyWrong) || 0
+    const physCorrect = Number(r.physicsCorrect) || 0
+    const physWrong = Number(r.physicsWrong) || 0
+    const chemCorrect = Number(r.chemistryCorrect) || 0
+    const chemWrong = Number(r.chemistryWrong) || 0
 
-  r.score = (Number(r.correctAnswers) * 4) - Number(r.wrongAnswers)
-  r.unanswered = totalQ - (Number(r.correctAnswers) + Number(r.wrongAnswers))
-  r.maxMarks = maxM
-  r.percentage = maxM > 0 ? (r.score / maxM) * 100 : 0
+    r.correctAnswers = bioCorrect + physCorrect + chemCorrect
+    r.wrongAnswers = bioWrong + physWrong + chemWrong
+    r.unanswered = 180 - (r.correctAnswers + r.wrongAnswers)
+    r.score = (r.correctAnswers * 4) - r.wrongAnswers
+    r.maxMarks = 720
+    r.percentage = (r.score / 720) * 100
+  } else {
+    const totalQ = testType === "weekly_biology" ? 50 : 45
+    const maxM = testType === "weekly_biology" ? 200 : 180
 
-  if (r.percentage < 0) r.percentage = 0
-  if (r.score < 0) r.score = 0
+    r.score = (Number(r.correctAnswers) * 4) - Number(r.wrongAnswers)
+    r.unanswered = totalQ - (Number(r.correctAnswers) + Number(r.wrongAnswers))
+    r.maxMarks = maxM
+    r.percentage = maxM > 0 ? (r.score / maxM) * 100 : 0
+
+    if (r.percentage < 0) r.percentage = 0
+    if (r.score < 0) r.score = 0
+  }
+  
   return r
 }
 
@@ -231,6 +250,11 @@ export default function MarksRegistryPage() {
     setViewMode("wizard-batch")
   }
 
+  const selectBatch = (batch: string) => {
+    setSelectedBatch(batch)
+    setViewMode("wizard-type")
+  }
+
   const selectTestType = (t: string) => {
     setSelectedTestType(t)
     const info = testTypeOptions.find(o => o.value === t)!
@@ -242,9 +266,11 @@ export default function MarksRegistryPage() {
       correctAnswers: 0,
       wrongAnswers: 0,
       biologyCorrect: 0,
-      chemistryCorrect: 0,
+      biologyWrong: 0,
       physicsCorrect: 0,
-      totalWrong: 0,
+      physicsWrong: 0,
+      chemistryCorrect: 0,
+      chemistryWrong: 0,
       unanswered: info.totalQ,
       score: 0,
       maxMarks: info.maxMarks,
@@ -266,22 +292,51 @@ export default function MarksRegistryPage() {
   // ─── Export Excel (from entry or view) ──────────────────────────────────
 
   const exportExcel = (
-    exportRows: { name: string; correct: number; wrong: number; unanswered: number; score: number; percentage: number }[],
+    exportRows: any[],
     batch: string,
     testLabel: string,
-    date: string
+    date: string,
+    isGrandExport = false
   ) => {
-    const data = exportRows.map(r => ({
-      "Student Name": r.name,
-      "Correct Answers": r.correct,
-      "Wrong Answers": r.wrong,
-      "Unanswered Questions": r.unanswered,
-      "Score": r.score,
-      "Percentage (%)": Number(r.percentage.toFixed(1))
-    }))
+    let data;
+    if (isGrandExport) {
+      data = exportRows.map(r => ({
+        "Student Name": r.name,
+        "Biology Correct": r.biologyCorrect,
+        "Biology Wrong": r.biologyWrong,
+        "Physics Correct": r.physicsCorrect,
+        "Physics Wrong": r.physicsWrong,
+        "Chemistry Correct": r.chemistryCorrect,
+        "Chemistry Wrong": r.chemistryWrong,
+        "Total Correct": r.correctAnswers,
+        "Total Wrong": r.wrongAnswers,
+        "Unanswered": r.unanswered,
+        "Final Marks": r.score
+      }))
+    } else {
+      data = exportRows.map(r => ({
+        "Student Name": r.name,
+        "Correct Answers": r.correct,
+        "Wrong Answers": r.wrong,
+        "Unanswered Questions": r.unanswered,
+        "Score": r.score,
+        "Percentage (%)": Number(r.percentage.toFixed(1))
+      }))
+    }
 
     const ws = XLSX.utils.json_to_sheet(data)
-    ws["!cols"] = [{ wch: 25 }, { wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 10 }, { wch: 14 }]
+    if (isGrandExport) {
+      ws["!cols"] = [
+        { wch: 25 }, // Student Name
+        { wch: 15 }, { wch: 15 }, // Biology Correct / Wrong
+        { wch: 15 }, { wch: 15 }, // Physics Correct / Wrong
+        { wch: 15 }, { wch: 15 }, // Chemistry Correct / Wrong
+        { wch: 15 }, { wch: 15 }, // Total Correct / Wrong
+        { wch: 12 }, { wch: 12 }  // Unanswered / Final Marks
+      ]
+    } else {
+      ws["!cols"] = [{ wch: 25 }, { wch: 16 }, { wch: 14 }, { wch: 20 }, { wch: 10 }, { wch: 14 }]
+    }
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, "Marks")
 
@@ -294,22 +349,39 @@ export default function MarksRegistryPage() {
 
   const handleExportFromEntry = () => {
     const info = testTypeOptions.find(t => t.value === selectedTestType)!
-    const exportRows = rows.map(r => ({
-      name: r.name,
-      correct: Number(r.correctAnswers),
-      wrong: Number(r.wrongAnswers),
-      unanswered: r.unanswered,
-      score: r.score,
-      percentage: r.percentage
-    }))
-    exportExcel(exportRows, selectedBatch, info.label, testDate)
+    if (selectedTestType === "grand") {
+      exportExcel(rows, selectedBatch, info.label, testDate, true)
+    } else {
+      const exportRows = rows.map(r => ({
+        name: r.name,
+        correct: Number(r.correctAnswers),
+        wrong: Number(r.wrongAnswers),
+        unanswered: r.unanswered,
+        score: r.score,
+        percentage: r.percentage
+      }))
+      exportExcel(exportRows, selectedBatch, info.label, testDate, false)
+    }
     toast.success("Excel file downloaded!")
   }
 
   // ─── Save Test Record ──────────────────────────────────────────────────
 
   const handleSaveTestRecord = async () => {
-    const filledRows = rows.filter(r => r.correctAnswers > 0 || r.wrongAnswers > 0)
+    const isGrandRecord = selectedTestType === "grand"
+    const filledRows = rows.filter(r => {
+      if (isGrandRecord) {
+        return (
+          Number(r.biologyCorrect) > 0 ||
+          Number(r.biologyWrong) > 0 ||
+          Number(r.physicsCorrect) > 0 ||
+          Number(r.physicsWrong) > 0 ||
+          Number(r.chemistryCorrect) > 0 ||
+          Number(r.chemistryWrong) > 0
+        )
+      }
+      return Number(r.correctAnswers) > 0 || Number(r.wrongAnswers) > 0
+    })
 
     if (filledRows.length === 0) {
       toast.error("Please enter marks for at least one student.")
@@ -341,9 +413,24 @@ export default function MarksRegistryPage() {
       for (const row of filledRows) {
         const c = calcRow(row, selectedTestType)
         let bio = null, chem = null, phys = null
-        if (selectedTestType === "weekly_biology") bio = c.score
-        else if (selectedTestType === "weekly_chemistry") chem = c.score
-        else if (selectedTestType === "weekly_physics") phys = c.score
+        let bioCorrect = null, chemCorrect = null, physCorrect = null, totalW = null
+
+        if (selectedTestType === "weekly_biology") {
+          bio = c.score
+        } else if (selectedTestType === "weekly_chemistry") {
+          chem = c.score
+        } else if (selectedTestType === "weekly_physics") {
+          phys = c.score
+        } else if (selectedTestType === "grand") {
+          bioCorrect = Number(row.biologyCorrect) || 0
+          chemCorrect = Number(row.chemistryCorrect) || 0
+          physCorrect = Number(row.physicsCorrect) || 0
+          totalW = Number(c.wrongAnswers) || 0
+
+          bio = (Number(row.biologyCorrect) || 0) * 4 - (Number(row.biologyWrong) || 0)
+          phys = (Number(row.physicsCorrect) || 0) * 4 - (Number(row.physicsWrong) || 0)
+          chem = (Number(row.chemistryCorrect) || 0) * 4 - (Number(row.chemistryWrong) || 0)
+        }
 
         const { error } = await supabase.from("student_marks").insert({
           student_id: row.id,
@@ -354,14 +441,14 @@ export default function MarksRegistryPage() {
           total: c.score,
           percentage: Number(c.percentage.toFixed(2)),
           performance: getGrading(c.percentage),
-          correct_answers: Number(row.correctAnswers),
-          wrong_answers: Number(row.wrongAnswers),
+          correct_answers: Number(c.correctAnswers),
+          wrong_answers: Number(c.wrongAnswers),
           unanswered_questions: c.unanswered,
           max_marks: c.maxMarks,
-          biology_correct: null,
-          chemistry_correct: null,
-          physics_correct: null,
-          total_wrong: null
+          biology_correct: bioCorrect,
+          chemistry_correct: chemCorrect,
+          physics_correct: physCorrect,
+          total_wrong: totalW
         })
 
         if (!error) {
@@ -384,7 +471,11 @@ export default function MarksRegistryPage() {
 
       await logAdminAction(supabase, `Entered marks for test: ${testName} (${selectedBatch}, ${successCount} students)`)
 
-      toast.success(`✅ Test Record Saved Successfully! (${successCount} students)`, tid)
+      if (isGrandRecord) {
+        toast.success("Grand Test Saved Successfully", tid)
+      } else {
+        toast.success(`✅ Test Record Saved Successfully! (${successCount} students)`, tid)
+      }
       fetchData(true)
     } catch (err: any) {
       toast.error(`Failed: ${err.message}`, tid)
@@ -407,6 +498,7 @@ export default function MarksRegistryPage() {
           id, student_id, correct_answers, wrong_answers, unanswered_questions,
           total, percentage, max_marks,
           biology_correct, chemistry_correct, physics_correct, total_wrong,
+          biology, chemistry, physics,
           students ( name, batch, student_id )
         `)
         .eq("test_id", rec.testId)
@@ -425,15 +517,43 @@ export default function MarksRegistryPage() {
   const handleExportFromView = () => {
     if (!viewRecord) return
     const info = testTypeOptions.find(t => t.value === viewRecord.testType)
-    const exportRows = viewRows.map((m: any) => ({
-      name: m.students?.name || "—",
-      correct: m.correct_answers || 0,
-      wrong: m.wrong_answers || 0,
-      unanswered: m.unanswered_questions || 0,
-      score: m.total || 0,
-      percentage: m.percentage || 0
-    }))
-    exportExcel(exportRows, viewRecord.batch, info?.label || viewRecord.testName, viewRecord.testDate)
+    const isGrandRecord = viewRecord.testType === "grand"
+
+    if (isGrandRecord) {
+      const exportRows = viewRows.map((m: any) => {
+        const bioC = m.biology_correct || 0
+        const chemC = m.chemistry_correct || 0
+        const physC = m.physics_correct || 0
+        const bioW = Math.max(0, (bioC * 4) - (m.biology || 0))
+        const chemW = Math.max(0, (chemC * 4) - (m.chemistry || 0))
+        const physW = Math.max(0, (physC * 4) - (m.physics || 0))
+
+        return {
+          name: m.students?.name || "—",
+          biologyCorrect: bioC,
+          biologyWrong: bioW,
+          physicsCorrect: physC,
+          physicsWrong: physW,
+          chemistryCorrect: chemC,
+          chemistryWrong: chemW,
+          correctAnswers: m.correct_answers || 0,
+          wrongAnswers: m.wrong_answers || 0,
+          unanswered: m.unanswered_questions || 0,
+          score: m.total || 0
+        }
+      })
+      exportExcel(exportRows, viewRecord.batch, info?.label || viewRecord.testName, viewRecord.testDate, true)
+    } else {
+      const exportRows = viewRows.map((m: any) => ({
+        name: m.students?.name || "—",
+        correct: m.correct_answers || 0,
+        wrong: m.wrong_answers || 0,
+        unanswered: m.unanswered_questions || 0,
+        score: m.total || 0,
+        percentage: m.percentage || 0
+      }))
+      exportExcel(exportRows, viewRecord.batch, info?.label || viewRecord.testName, viewRecord.testDate, false)
+    }
     toast.success("Excel file downloaded!")
   }
 
@@ -622,15 +742,32 @@ export default function MarksRegistryPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-slate-50 border-b-2 border-slate-200">
-                      <th className="text-left py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider w-10">#</th>
-                      <th className="text-left py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider min-w-[150px]">Student Name</th>
-                      <th className="text-center py-3 px-3 font-bold text-emerald-600 text-[11px] uppercase tracking-wider min-w-[120px]">Correct Answers</th>
-                      <th className="text-center py-3 px-3 font-bold text-red-500 text-[11px] uppercase tracking-wider min-w-[120px]">Wrong Answers</th>
-                      <th className="text-center py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider min-w-[110px]">Unanswered</th>
-                      <th className="text-center py-3 px-3 font-bold text-blue-600 text-[11px] uppercase tracking-wider min-w-[100px]">Score</th>
-                      <th className="text-center py-3 px-3 font-bold text-indigo-600 text-[11px] uppercase tracking-wider min-w-[100px]">Percentage</th>
-                    </tr>
+                    {isGrand ? (
+                      <tr className="bg-slate-50 border-b-2 border-slate-200 font-bold text-slate-500 text-[11px] uppercase tracking-wider">
+                        <th className="text-left py-3 px-3 w-10">#</th>
+                        <th className="text-left py-3 px-3 min-w-[150px]">Student Name</th>
+                        <th className="text-center py-3 px-2 min-w-[85px] text-emerald-650 bg-emerald-50/50">Bio Correct</th>
+                        <th className="text-center py-3 px-2 min-w-[85px] text-red-500 bg-red-50/50">Bio Wrong</th>
+                        <th className="text-center py-3 px-2 min-w-[85px] text-emerald-650 bg-emerald-50/50">Phys Correct</th>
+                        <th className="text-center py-3 px-2 min-w-[85px] text-red-500 bg-red-50/50">Phys Wrong</th>
+                        <th className="text-center py-3 px-2 min-w-[85px] text-emerald-650 bg-emerald-50/50">Chem Correct</th>
+                        <th className="text-center py-3 px-2 min-w-[85px] text-red-500 bg-red-50/50">Chem Wrong</th>
+                        <th className="text-center py-3 px-3 min-w-[95px] text-emerald-700">Total Correct</th>
+                        <th className="text-center py-3 px-3 min-w-[95px] text-red-650">Total Wrong</th>
+                        <th className="text-center py-3 px-3 min-w-[95px] text-slate-500">Unanswered</th>
+                        <th className="text-center py-3 px-3 min-w-[100px] text-blue-600">Final Marks</th>
+                      </tr>
+                    ) : (
+                      <tr className="bg-slate-50 border-b-2 border-slate-200">
+                        <th className="text-left py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider w-10">#</th>
+                        <th className="text-left py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider min-w-[150px]">Student Name</th>
+                        <th className="text-center py-3 px-3 font-bold text-emerald-600 text-[11px] uppercase tracking-wider min-w-[120px]">Correct Answers</th>
+                        <th className="text-center py-3 px-3 font-bold text-red-500 text-[11px] uppercase tracking-wider min-w-[120px]">Wrong Answers</th>
+                        <th className="text-center py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider min-w-[110px]">Unanswered</th>
+                        <th className="text-center py-3 px-3 font-bold text-blue-600 text-[11px] uppercase tracking-wider min-w-[100px]">Score</th>
+                        <th className="text-center py-3 px-3 font-bold text-indigo-600 text-[11px] uppercase tracking-wider min-w-[100px]">Percentage</th>
+                      </tr>
+                    )}
                   </thead>
                   <tbody>
                     {rows.map((row, idx) => (
@@ -647,33 +784,103 @@ export default function MarksRegistryPage() {
                           {row.error && <span className="text-[10px] text-red-500 block font-medium">Error: {row.error}</span>}
                         </td>
 
-                        <td className="py-2 px-2 text-center">
-                          <input type="number" min="0" max={testInfo?.totalQ || 180}
-                            value={row.correctAnswers || ""}
-                            onChange={e => updateRow(idx, "correctAnswers", Number(e.target.value))}
-                            disabled={row.saved || saving} placeholder="0"
-                            className="w-full max-w-[80px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400 mx-auto block"
-                          />
-                        </td>
-                        <td className="py-2 px-2 text-center">
-                          <input type="number" min="0"
-                            value={row.wrongAnswers || ""}
-                            onChange={e => updateRow(idx, "wrongAnswers", Number(e.target.value))}
-                            disabled={row.saved || saving} placeholder="0"
-                            className="w-full max-w-[80px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-red-300 focus:ring-2 focus:ring-red-100 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400 mx-auto block"
-                          />
-                        </td>
+                        {isGrand ? (
+                          <>
+                            {/* Biology Correct/Wrong inputs */}
+                            <td className="py-2 px-1 text-center bg-emerald-50/10">
+                              <input type="number" min="0" max="90"
+                                value={row.biologyCorrect || ""}
+                                onChange={e => updateRow(idx, "biologyCorrect", Number(e.target.value))}
+                                disabled={row.saved || saving} placeholder="0"
+                                className="w-full max-w-[70px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none disabled:bg-slate-150 disabled:text-slate-400 mx-auto block"
+                              />
+                            </td>
+                            <td className="py-2 px-1 text-center bg-red-50/10">
+                              <input type="number" min="0" max="90"
+                                value={row.biologyWrong || ""}
+                                onChange={e => updateRow(idx, "biologyWrong", Number(e.target.value))}
+                                disabled={row.saved || saving} placeholder="0"
+                                className="w-full max-w-[70px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-red-300 focus:ring-2 focus:ring-red-100 focus:outline-none disabled:bg-slate-150 disabled:text-slate-400 mx-auto block"
+                              />
+                            </td>
 
-                        <td className="py-2 px-3 text-center font-semibold text-slate-500">{row.unanswered}</td>
-                        <td className="py-2 px-3 text-center">
-                          <span className={`font-extrabold text-base ${pctColor(row.percentage)}`}>{row.score}</span>
-                          <span className="text-[10px] text-slate-400 font-medium"> / {row.maxMarks}</span>
-                        </td>
-                        <td className="py-2 px-3 text-center">
-                          <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold border ${pctBg(row.percentage)} ${pctColor(row.percentage)}`}>
-                            {row.percentage.toFixed(1)}%
-                          </span>
-                        </td>
+                            {/* Physics Correct/Wrong inputs */}
+                            <td className="py-2 px-1 text-center bg-emerald-50/10">
+                              <input type="number" min="0" max="45"
+                                value={row.physicsCorrect || ""}
+                                onChange={e => updateRow(idx, "physicsCorrect", Number(e.target.value))}
+                                disabled={row.saved || saving} placeholder="0"
+                                className="w-full max-w-[70px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none disabled:bg-slate-150 disabled:text-slate-400 mx-auto block"
+                              />
+                            </td>
+                            <td className="py-2 px-1 text-center bg-red-50/10">
+                              <input type="number" min="0" max="45"
+                                value={row.physicsWrong || ""}
+                                onChange={e => updateRow(idx, "physicsWrong", Number(e.target.value))}
+                                disabled={row.saved || saving} placeholder="0"
+                                className="w-full max-w-[70px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-red-300 focus:ring-2 focus:ring-red-100 focus:outline-none disabled:bg-slate-150 disabled:text-slate-400 mx-auto block"
+                              />
+                            </td>
+
+                            {/* Chemistry Correct/Wrong inputs */}
+                            <td className="py-2 px-1 text-center bg-emerald-50/10">
+                              <input type="number" min="0" max="45"
+                                value={row.chemistryCorrect || ""}
+                                onChange={e => updateRow(idx, "chemistryCorrect", Number(e.target.value))}
+                                disabled={row.saved || saving} placeholder="0"
+                                className="w-full max-w-[70px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none disabled:bg-slate-150 disabled:text-slate-400 mx-auto block"
+                              />
+                            </td>
+                            <td className="py-2 px-1 text-center bg-red-50/10">
+                              <input type="number" min="0" max="45"
+                                value={row.chemistryWrong || ""}
+                                onChange={e => updateRow(idx, "chemistryWrong", Number(e.target.value))}
+                                disabled={row.saved || saving} placeholder="0"
+                                className="w-full max-w-[70px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-red-300 focus:ring-2 focus:ring-red-100 focus:outline-none disabled:bg-slate-150 disabled:text-slate-400 mx-auto block"
+                              />
+                            </td>
+
+                            {/* Calculated Grand Test Fields */}
+                            <td className="py-2 px-3 text-center font-bold text-slate-700">{row.correctAnswers}</td>
+                            <td className="py-2 px-3 text-center font-bold text-slate-700">{row.wrongAnswers}</td>
+                            <td className="py-2 px-3 text-center font-semibold text-slate-500">{row.unanswered}</td>
+                            <td className="py-2 px-3 text-center">
+                              <span className={`font-extrabold text-base ${row.score >= 0 ? "text-blue-600" : "text-red-500"}`}>{row.score}</span>
+                              <span className="text-[10px] text-slate-400 font-medium"> / 720</span>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            {/* Weekly Test Layout (Unchanged) */}
+                            <td className="py-2 px-2 text-center">
+                              <input type="number" min="0" max={testInfo?.totalQ || 180}
+                                value={row.correctAnswers || ""}
+                                onChange={e => updateRow(idx, "correctAnswers", Number(e.target.value))}
+                                disabled={row.saved || saving} placeholder="0"
+                                className="w-full max-w-[80px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400 mx-auto block"
+                              />
+                            </td>
+                            <td className="py-2 px-2 text-center">
+                              <input type="number" min="0"
+                                value={row.wrongAnswers || ""}
+                                onChange={e => updateRow(idx, "wrongAnswers", Number(e.target.value))}
+                                disabled={row.saved || saving} placeholder="0"
+                                className="w-full max-w-[80px] h-10 text-center rounded-lg border border-slate-250 text-slate-800 font-semibold text-sm focus:border-red-300 focus:ring-2 focus:ring-red-100 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400 mx-auto block"
+                              />
+                            </td>
+
+                            <td className="py-2 px-3 text-center font-semibold text-slate-500">{row.unanswered}</td>
+                            <td className="py-2 px-3 text-center">
+                              <span className={`font-extrabold text-base ${pctColor(row.percentage)}`}>{row.score}</span>
+                              <span className="text-[10px] text-slate-400 font-medium"> / {row.maxMarks}</span>
+                            </td>
+                            <td className="py-2 px-3 text-center">
+                              <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold border ${pctBg(row.percentage)} ${pctColor(row.percentage)}`}>
+                                {row.percentage.toFixed(1)}%
+                              </span>
+                            </td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -756,35 +963,82 @@ export default function MarksRegistryPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-slate-50 border-b-2 border-slate-200">
-                      <th className="text-left py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider w-10">#</th>
-                      <th className="text-left py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider min-w-[150px]">Student Name</th>
-                      <th className="text-center py-3 px-3 font-bold text-emerald-600 text-[11px] uppercase tracking-wider">Correct Answers</th>
-                      <th className="text-center py-3 px-3 font-bold text-red-500 text-[11px] uppercase tracking-wider">Wrong Answers</th>
-                      <th className="text-center py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider">Unanswered</th>
-                      <th className="text-center py-3 px-3 font-bold text-blue-600 text-[11px] uppercase tracking-wider">Score</th>
-                      <th className="text-center py-3 px-3 font-bold text-indigo-600 text-[11px] uppercase tracking-wider">Percentage</th>
-                    </tr>
+                    {recIsGrand ? (
+                      <tr className="bg-slate-50 border-b-2 border-slate-200 font-bold text-slate-500 text-[11px] uppercase tracking-wider">
+                        <th className="text-left py-3 px-3 w-10">#</th>
+                        <th className="text-left py-3 px-3 min-w-[150px]">Student Name</th>
+                        <th className="text-center py-3 px-2 text-emerald-650 bg-emerald-50/30">Bio Correct</th>
+                        <th className="text-center py-3 px-2 text-red-500 bg-red-50/30">Bio Wrong</th>
+                        <th className="text-center py-3 px-2 text-emerald-650 bg-emerald-50/30">Phys Correct</th>
+                        <th className="text-center py-3 px-2 text-red-500 bg-red-50/30">Phys Wrong</th>
+                        <th className="text-center py-3 px-2 text-emerald-650 bg-emerald-50/30">Chem Correct</th>
+                        <th className="text-center py-3 px-2 text-red-500 bg-red-50/30">Chem Wrong</th>
+                        <th className="text-center py-3 px-3 text-emerald-750">Total Correct</th>
+                        <th className="text-center py-3 px-3 text-red-650">Total Wrong</th>
+                        <th className="text-center py-3 px-3 text-slate-550">Unanswered</th>
+                        <th className="text-center py-3 px-3 min-w-[100px] text-blue-600">Final Marks</th>
+                      </tr>
+                    ) : (
+                      <tr className="bg-slate-50 border-b-2 border-slate-200">
+                        <th className="text-left py-3 px-3 w-10">#</th>
+                        <th className="text-left py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider min-w-[150px]">Student Name</th>
+                        <th className="text-center py-3 px-3 font-bold text-emerald-600 text-[11px] uppercase tracking-wider">Correct Answers</th>
+                        <th className="text-center py-3 px-3 font-bold text-red-500 text-[11px] uppercase tracking-wider">Wrong Answers</th>
+                        <th className="text-center py-3 px-3 font-bold text-slate-500 text-[11px] uppercase tracking-wider">Unanswered</th>
+                        <th className="text-center py-3 px-3 font-bold text-blue-600 text-[11px] uppercase tracking-wider">Score</th>
+                        <th className="text-center py-3 px-3 font-bold text-indigo-600 text-[11px] uppercase tracking-wider">Percentage</th>
+                      </tr>
+                    )}
                   </thead>
                   <tbody>
-                    {viewRows.map((m: any, idx: number) => (
-                      <tr key={m.id} className={`border-b border-slate-100 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/30"}`}>
-                        <td className="py-2.5 px-3 font-bold text-slate-400 text-xs">{idx + 1}</td>
-                        <td className="py-2.5 px-3 font-bold text-slate-800 text-sm">{m.students?.name || "—"}</td>
-                        <td className="py-2.5 px-3 text-center font-semibold text-slate-700">{m.correct_answers || 0}</td>
-                        <td className="py-2.5 px-3 text-center font-semibold text-red-500">{m.wrong_answers || 0}</td>
-                        <td className="py-2.5 px-3 text-center font-semibold text-slate-500">{m.unanswered_questions || 0}</td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className={`font-extrabold ${pctColor(m.percentage || 0)}`}>{m.total || 0}</span>
-                          <span className="text-[10px] text-slate-400 font-medium"> / {m.max_marks || 0}</span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold border ${pctBg(m.percentage || 0)} ${pctColor(m.percentage || 0)}`}>
-                            {Number(m.percentage || 0).toFixed(1)}%
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {viewRows.map((m: any, idx: number) => {
+                      const bioC = m.biology_correct || 0
+                      const chemC = m.chemistry_correct || 0
+                      const physC = m.physics_correct || 0
+                      const bioW = Math.max(0, (bioC * 4) - (m.biology || 0))
+                      const chemW = Math.max(0, (chemC * 4) - (m.chemistry || 0))
+                      const physW = Math.max(0, (physC * 4) - (m.physics || 0))
+
+                      return (
+                        <tr key={m.id} className={`border-b border-slate-100 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/30"}`}>
+                          <td className="py-2.5 px-3 font-bold text-slate-400 text-xs">{idx + 1}</td>
+                          <td className="py-2.5 px-3 font-bold text-slate-800 text-sm">{m.students?.name || "—"}</td>
+                          
+                          {recIsGrand ? (
+                            <>
+                              <td className="py-2.5 px-2 text-center font-semibold text-slate-700 bg-emerald-50/5">{bioC}</td>
+                              <td className="py-2.5 px-2 text-center font-semibold text-red-500 bg-red-50/5">{bioW}</td>
+                              <td className="py-2.5 px-2 text-center font-semibold text-slate-700 bg-emerald-50/5">{physC}</td>
+                              <td className="py-2.5 px-2 text-center font-semibold text-red-500 bg-red-50/5">{physW}</td>
+                              <td className="py-2.5 px-2 text-center font-semibold text-slate-700 bg-emerald-50/5">{chemC}</td>
+                              <td className="py-2.5 px-2 text-center font-semibold text-red-500 bg-red-50/5">{chemW}</td>
+                              <td className="py-2.5 px-3 text-center font-bold text-emerald-700">{m.correct_answers || 0}</td>
+                              <td className="py-2.5 px-3 text-center font-bold text-red-650">{m.wrong_answers || 0}</td>
+                              <td className="py-2.5 px-3 text-center font-semibold text-slate-500">{m.unanswered_questions || 0}</td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className={`font-extrabold text-base ${m.total >= 0 ? "text-blue-600" : "text-red-500"}`}>{m.total || 0}</span>
+                                <span className="text-[10px] text-slate-400 font-medium"> / 720</span>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="py-2.5 px-3 text-center font-semibold text-slate-700">{m.correct_answers || 0}</td>
+                              <td className="py-2.5 px-3 text-center font-semibold text-red-500">{m.wrong_answers || 0}</td>
+                              <td className="py-2.5 px-3 text-center font-semibold text-slate-500">{m.unanswered_questions || 0}</td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className={`font-extrabold ${pctColor(m.percentage || 0)}`}>{m.total || 0}</span>
+                                <span className="text-[10px] text-slate-400 font-medium"> / {m.max_marks || 0}</span>
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold border ${pctBg(m.percentage || 0)} ${pctColor(m.percentage || 0)}`}>
+                                  {Number(m.percentage || 0).toFixed(1)}%
+                                </span>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -903,22 +1157,48 @@ export default function MarksRegistryPage() {
                         <button
                           onClick={() => {
                             const info = testTypeOptions.find(t => t.value === rec.testType)
+                            const isGrandRecord = rec.testType === "grand"
                             // Fetch and export
                             supabase.from("student_marks")
-                              .select("correct_answers, wrong_answers, unanswered_questions, total, percentage, max_marks, students ( name, batch )")
+                              .select("correct_answers, wrong_answers, unanswered_questions, total, percentage, max_marks, biology_correct, chemistry_correct, physics_correct, total_wrong, biology, chemistry, physics, students ( name, batch )")
                               .eq("test_id", rec.testId)
                               .then(({ data }: any) => {
                                 if (data) {
                                   const filtered = data.filter((m: any) => m.students?.batch === rec.batch)
-                                  const exportRows = filtered.map((m: any) => ({
-                                    name: m.students?.name || "—",
-                                    correct: m.correct_answers || 0,
-                                    wrong: m.wrong_answers || 0,
-                                    unanswered: m.unanswered_questions || 0,
-                                    score: m.total || 0,
-                                    percentage: m.percentage || 0
-                                  }))
-                                  exportExcel(exportRows, rec.batch, info?.label || rec.testName, rec.testDate)
+                                  if (isGrandRecord) {
+                                    const exportRows = filtered.map((m: any) => {
+                                      const bioC = m.biology_correct || 0
+                                      const chemC = m.chemistry_correct || 0
+                                      const physC = m.physics_correct || 0
+                                      const bioW = Math.max(0, (bioC * 4) - (m.biology || 0))
+                                      const chemW = Math.max(0, (chemC * 4) - (m.chemistry || 0))
+                                      const physW = Math.max(0, (physC * 4) - (m.physics || 0))
+                                      return {
+                                        name: m.students?.name || "—",
+                                        biologyCorrect: bioC,
+                                        biologyWrong: bioW,
+                                        physicsCorrect: physC,
+                                        physicsWrong: physW,
+                                        chemistryCorrect: chemC,
+                                        chemistryWrong: chemW,
+                                        correctAnswers: m.correct_answers || 0,
+                                        wrongAnswers: m.wrong_answers || 0,
+                                        unanswered: m.unanswered_questions || 0,
+                                        score: m.total || 0
+                                      }
+                                    })
+                                    exportExcel(exportRows, rec.batch, info?.label || rec.testName, rec.testDate, true)
+                                  } else {
+                                    const exportRows = filtered.map((m: any) => ({
+                                      name: m.students?.name || "—",
+                                      correct: m.correct_answers || 0,
+                                      wrong: m.wrong_answers || 0,
+                                      unanswered: m.unanswered_questions || 0,
+                                      score: m.total || 0,
+                                      percentage: m.percentage || 0
+                                    }))
+                                    exportExcel(exportRows, rec.batch, info?.label || rec.testName, rec.testDate, false)
+                                  }
                                   toast.success("Excel file downloaded!")
                                 }
                               })

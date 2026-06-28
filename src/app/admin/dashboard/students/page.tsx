@@ -32,7 +32,6 @@ import { logAdminAction } from "@/lib/audit"
 
 const batchOptions = [
   "Repeater",
-  "Rerepeater",
   "Weekend Batch",
   "Crash Course",
   "Test Batch"
@@ -246,8 +245,33 @@ export default function StudentManagementPage() {
     })
   }, [students, searchTerm, selectedBatch, selectedStatus])
 
+  const [debugUser, setDebugUser] = useState<any>(null)
+  const [debugError, setDebugError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const getDebug = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser()
+        if (error) setDebugError(error.message)
+        if (user) setDebugUser(user)
+      } catch (err: any) {
+        setDebugError(err.message)
+      }
+    }
+    getDebug()
+  }, [supabase])
+
   return (
     <div className="space-y-6 text-sm animate-fadeIn">
+      {/* Diagnostic Auth Banner */}
+      <div className="p-3 bg-slate-900 text-white rounded-xl text-xs space-y-1">
+        <div><strong>Debug Supabase Auth Client:</strong></div>
+        <div className="font-mono">
+          User: {debugUser ? `${debugUser.email} (ID: ${debugUser.id})` : "Anonymous/Unauthenticated"} 
+          {debugError && ` | Error: ${debugError}`}
+        </div>
+      </div>
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
